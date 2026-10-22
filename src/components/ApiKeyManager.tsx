@@ -4,7 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Key, Copy, Check, AlertTriangle, RefreshCw, ShieldCheck, Terminal, Code2, Loader2, Info } from 'lucide-react';
 import { getApiKeyStatusApi, generateApiKeyApi, BACKEND_URL } from '@/lib/api';
 
-export function ApiKeyManager() {
+export interface ApiKeyManagerProps {
+  onApiKeyGenerated?: (prefix: string) => void;
+}
+
+export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -45,6 +49,7 @@ export function ApiKeyManager() {
       setPrefix(res.api_key_prefix);
       setHasApiKey(true);
       setShowRotateConfirm(false);
+      onApiKeyGenerated?.(res.api_key_prefix);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al generar la API Key');
     } finally {

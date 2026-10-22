@@ -20,15 +20,20 @@ import { getTenantMetricsApi } from '@/lib/api';
 interface TenantMetricsProps {
   tenant: TenantInfo;
   onNavigateTab: (tab: 'metrics' | 'apikey' | 'plans') => void;
+  onRefreshMetrics?: () => void;
 }
 
-export function TenantMetrics({ tenant: initialTenant, onNavigateTab }: TenantMetricsProps) {
+export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshMetrics }: TenantMetricsProps) {
   const [tenant, setTenant] = useState<TenantInfo>(initialTenant);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setTenant(initialTenant);
   }, [initialTenant]);
+
+  useEffect(() => {
+    onRefreshMetrics?.();
+  }, [onRefreshMetrics]);
 
   const limit = tenant.query_limit || 250;
   const count = tenant.query_count || 0;

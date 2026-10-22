@@ -68,6 +68,19 @@ export default function Home() {
     setTenant(null);
   };
 
+  const handleApiKeyGenerated = useCallback((newPrefix: string) => {
+    setTenant((prev) =>
+      prev
+        ? {
+            ...prev,
+            has_api_key: true,
+            api_key_prefix: newPrefix,
+          }
+        : null
+    );
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
   // 1. Pantalla de carga mientras se verifica el token
   if (loadingAuth) {
     return (
@@ -100,11 +113,15 @@ export default function Home() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'metrics' && (
-          <TenantMetrics tenant={tenant} onNavigateTab={setActiveTab} />
+          <TenantMetrics
+            tenant={tenant}
+            onNavigateTab={setActiveTab}
+            onRefreshMetrics={fetchUserProfile}
+          />
         )}
 
         {activeTab === 'apikey' && (
-          <ApiKeyManager />
+          <ApiKeyManager onApiKeyGenerated={handleApiKeyGenerated} />
         )}
 
         {activeTab === 'plans' && (
