@@ -5,28 +5,21 @@ import { Header, TabType } from '@/components/Header';
 import { AuthScreen } from '@/components/AuthScreen';
 import { ApiKeyManager } from '@/components/ApiKeyManager';
 import { PlansManager } from '@/components/PlansManager';
+import { AdminPlansDashboard } from '@/components/AdminPlansDashboard';
 import { TenantMetrics } from '@/components/TenantMetrics';
-import { checkBackendHealth, getMeApi, getAuthToken, removeAuthToken } from '@/lib/api';
+import { QueryHistory } from '@/components/QueryHistory';
+import { AdminLayout } from '@/components/AdminLayout';
+import { getMeApi, getAuthToken, removeAuthToken, verifyStripeSessionApi } from '@/lib/api';
 import { UserProfile, TenantInfo, AuthResponse } from '@/types/auth';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
-  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
-  const [checkingBackend, setCheckingBackend] = useState(false);
 
   // Authentication State
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
-
-  // Comprobar la conexión con la API en la nube
-  const handleRefreshBackend = useCallback(async () => {
-    setCheckingBackend(true);
-    const health = await checkBackendHealth();
-    setBackendOnline(health.online);
-    setCheckingBackend(false);
-  }, []);
 
   // Cargar perfil del usuario autenticado
   const fetchUserProfile = useCallback(async () => {
@@ -42,7 +35,7 @@ export default function Home() {
       const data = await getMeApi();
       setUser(data.user);
       setTenant(data.tenant);
-    } catch (err) {
+    } catch {
       removeAuthToken();
       setUser(null);
       setTenant(null);
@@ -53,12 +46,38 @@ export default function Home() {
 
   useEffect(() => {
     fetchUserProfile();
-    handleRefreshBackend();
-  }, [fetchUserProfile, handleRefreshBackend]);
+
+    // Validar si venimos de un pago exitoso de Stripe Checkout (?payment=success&session_id=...)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isSuccess = urlParams.get('payment') === 'success';
+      const sessionId = urlParams.get('session_id');
+
+      if (isSuccess && sessionId) {
+        verifyStripeSessionApi(sessionId)
+          .then((res) => {
+            if (res.success) {
+              fetchUserProfile();
+            }
+          })
+          .catch((err) => {
+            console.error('Error verificando sesión de Stripe:', err);
+          })
+          .finally(() => {
+            // Limpiar query params de la URL para dejarla limpia
+            window.history.replaceState({}, document.title, window.location.pathname);
+          });
+      }
+    }
+  }, [fetchUserProfile]);
 
   const handleAuthSuccess = (authData: AuthResponse) => {
     setUser(authData.user);
-    // Refrescar el perfil completo del tenant
+    if (authData.user.role === 'SUPERADMIN') {
+      setActiveTab('admin-plans');
+    } else {
+      setActiveTab('metrics');
+    }
     fetchUserProfile();
   };
 
@@ -84,34 +103,46 @@ export default function Home() {
   // 1. Pantalla de carga mientras se verifica el token
   if (loadingAuth) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-        <p className="text-sm font-medium">Verificando sesión segura...</p>
+      <div className="min-h-screen bg-[var(--color-bg-surface)] flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+        <Loader2 className="w-10 h-10 animate-spin text-[#5BE1E6] mb-4" />
+        <p className="text-xs font-mono">Verificando sesión segura...</p>
       </div>
     );
   }
 
-  // 2. Si no hay sesión iniciada, exige Login / Registro obligatoriamente
+  // 2. Si no hay sesión iniciada, exige Login / Registro
   if (!user || !tenant) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
-  // 3. Panel Administrativo para Clientes Autenticados
+  // 3. Si el usuario es SUPERADMIN, mostrar exclusivamente el Panel Administrativo
+  if (user.role === 'SUPERADMIN') {
+    return (
+      <AdminLayout
+        user={user}
+        tenant={tenant}
+        onLogout={handleLogout}
+        onUserUpdated={(updatedUser) => {
+          setUser(updatedUser);
+        }}
+      />
+    );
+  }
+
+  // 4. Portal Cliente para usuarios clientes
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[var(--color-bg-surface)] text-[var(--color-text-main)] flex flex-col transition-colors">
       <Header
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        backendOnline={backendOnline}
-        checkingBackend={checkingBackend}
-        onRefreshBackend={handleRefreshBackend}
         companyName={tenant.company_name}
         userName={user.full_name}
         planName={tenant.plan_name || 'Free'}
+        isSuperAdmin={false}
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[1152px] w-full mx-auto px-3 sm:px-6 lg:px-7 py-5 sm:py-8 pb-20 md:pb-8">
         {activeTab === 'metrics' && (
           <TenantMetrics
             tenant={tenant}
@@ -119,6 +150,8 @@ export default function Home() {
             onRefreshMetrics={fetchUserProfile}
           />
         )}
+
+        {activeTab === 'history' && <QueryHistory />}
 
         {activeTab === 'apikey' && (
           <ApiKeyManager onApiKeyGenerated={handleApiKeyGenerated} />
@@ -130,11 +163,13 @@ export default function Home() {
             onPlanUpdated={fetchUserProfile}
           />
         )}
+
+        {activeTab === 'admin-plans' && <AdminPlansDashboard />}
       </main>
 
-      {/* Footer minimalista */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        <p>RegTech Platform — Monitoreo Continuo de Cumplimiento AML / KYC / OFAC</p>
+      {/* Footer minimalista de Zodall */}
+      <footer className="border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-card-subtle)] py-6 text-center text-xs text-[var(--color-text-faint)]">
+        <p>Zodall Platform — Monitoreo Continuo de Cumplimiento AML / KYC / OFAC</p>
       </footer>
     </div>
   );

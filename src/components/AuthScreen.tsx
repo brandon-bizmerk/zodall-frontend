@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, Building, User, Globe, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { Shield, Lock, Mail, Building, User, Globe, ArrowRight, Loader2, Sun, Moon } from 'lucide-react';
 import { loginApi, registerApi, ApiError } from '@/lib/api';
 import { AuthResponse } from '@/types/auth';
+import { useTheme } from '@/context/ThemeContext';
 
 interface AuthScreenProps {
   onAuthSuccess: (authData: AuthResponse) => void;
@@ -13,6 +15,9 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   // Form states
   const [email, setEmail] = useState('');
@@ -63,28 +68,53 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background Glows */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[var(--color-bg-surface)] text-[var(--color-text-main)] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden transition-colors">
+      {/* Botón flotante para cambiar tema */}
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={toggleTheme}
+          title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          className="w-9 h-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] shadow-sm transition"
+        >
+          {isDark ? <Sun className="w-4 h-4 text-[#5BE1E6]" /> : <Moon className="w-4 h-4 text-[#0b8a86]" />}
+        </button>
+      </div>
 
-      {/* Header / Logo */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-xl shadow-blue-500/20 mb-4 ring-1 ring-white/20">
-          <Shield className="w-8 h-8 text-white" />
+      {/* Header / Logo de Zodall */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 px-4">
+        <div className="inline-flex items-center justify-center mb-4">
+          {isDark ? (
+            <Image
+              src="/zodall-logo-turquesa.png"
+              alt="Zodall"
+              width={200}
+              height={48}
+              priority
+              className="object-contain"
+            />
+          ) : (
+            <Image
+              src="/zodall-logo-carbon.png"
+              alt="Zodall"
+              width={200}
+              height={48}
+              priority
+              className="object-contain"
+            />
+          )}
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-          RegTech Platform
-        </h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Portal Administrativo para Empresas y Desarrolladores
+        <p className="text-xs font-mono tracking-widest uppercase text-[#5BE1E6]">
+          El filtro del comercio seguro
+        </p>
+        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+          Portal Administrativo de Cumplimiento AML / KYC
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
-        <div className="bg-slate-900/80 backdrop-blur-xl py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10">
-          {/* Tabs Selector */}
-          <div className="flex rounded-xl bg-slate-950/60 p-1 mb-6 border border-slate-800/80">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10 px-4 sm:px-0">
+        <div className="bg-[var(--color-bg-card)] py-8 px-6 shadow-xl rounded-2xl border border-[var(--color-border)] sm:px-10">
+          {/* Selector de Pestañas */}
+          <div className="flex rounded-xl bg-[var(--color-bg-card-subtle)] p-1 mb-6 border border-[var(--color-border)]">
             <button
               type="button"
               onClick={() => {
@@ -93,8 +123,8 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               }}
               className={`w-1/2 py-2.5 text-xs font-semibold rounded-lg transition-all ${
                 !isRegister
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#5BE1E6] text-[#181919] shadow-sm font-bold'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
               }`}
             >
               Iniciar Sesión
@@ -107,19 +137,17 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               }}
               className={`w-1/2 py-2.5 text-xs font-semibold rounded-lg transition-all ${
                 isRegister
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#5BE1E6] text-[#181919] shadow-sm font-bold'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
               }`}
             >
               Registrar Empresa
             </button>
           </div>
 
-          {/* Error Alert */}
           {errorMessage && (
-            <div className="mb-6 rounded-xl bg-red-500/10 border border-red-500/30 p-3.5 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-red-300 font-medium leading-relaxed">{errorMessage}</p>
+            <div className="mb-5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+              {errorMessage}
             </div>
           )}
 
@@ -127,128 +155,118 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             {isRegister && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Nombre de la Empresa o Comercio
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">
+                    Nombre de la Empresa <span className="text-[#5BE1E6]">*</span>
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                      <Building className="w-4 h-4" />
-                    </div>
+                    <Building className="w-4 h-4 text-[var(--color-text-faint)] absolute left-3.5 top-3" />
                     <input
                       type="text"
-                      required
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="Ej. Tienda Online SAS"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 border border-slate-700/80 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="Ej. Mi Fintech SAS"
+                      required
+                      className="w-full rounded-xl bg-[var(--color-bg-card-subtle)] border border-[var(--color-border)] pl-10 pr-4 py-2.5 text-xs text-[var(--color-text-main)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[#5BE1E6] transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Nombre del Administrador
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">
+                    Tu Nombre Completo <span className="text-[#5BE1E6]">*</span>
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                      <User className="w-4 h-4" />
-                    </div>
+                    <User className="w-4 h-4 text-[var(--color-text-faint)] absolute left-3.5 top-3" />
                     <input
                       type="text"
-                      required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Ej. Carlos Martínez"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 border border-slate-700/80 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="Ej. Carlos Mendoza"
+                      required
+                      className="w-full rounded-xl bg-[var(--color-bg-card-subtle)] border border-[var(--color-border)] pl-10 pr-4 py-2.5 text-xs text-[var(--color-text-main)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[#5BE1E6] transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">País</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">
+                    País de Operación
+                  </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                      <Globe className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="text"
+                    <Globe className="w-4 h-4 text-[var(--color-text-faint)] absolute left-3.5 top-3" />
+                    <select
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
-                      placeholder="Ej. Colombia"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 border border-slate-700/80 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    />
+                      className="w-full rounded-xl bg-[var(--color-bg-card-subtle)] border border-[var(--color-border)] pl-10 pr-4 py-2.5 text-xs text-[var(--color-text-main)] focus:outline-none focus:border-[#5BE1E6] transition"
+                    >
+                      <option value="Colombia">Colombia</option>
+                      <option value="México">México</option>
+                      <option value="Estados Unidos">Estados Unidos</option>
+                      <option value="Perú">Perú</option>
+                      <option value="Chile">Chile</option>
+                      <option value="Argentina">Argentina</option>
+                      <option value="España">España</option>
+                      <option value="Otro">Otro</option>
+                    </select>
                   </div>
                 </div>
               </>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Correo Electrónico Corporativo
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">
+                Correo Electrónico Corporativo <span className="text-[#5BE1E6]">*</span>
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
-                </div>
+                <Mail className="w-4 h-4 text-[var(--color-text-faint)] absolute left-3.5 top-3" />
                 <input
                   type="email"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@tuempresa.com"
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 border border-slate-700/80 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  required
+                  className="w-full rounded-xl bg-[var(--color-bg-card-subtle)] border border-[var(--color-border)] pl-10 pr-4 py-2.5 text-xs text-[var(--color-text-main)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[#5BE1E6] transition font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Contraseña</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">
+                Contraseña <span className="text-[#5BE1E6]">*</span>
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="w-4 h-4" />
-                </div>
+                <Lock className="w-4 h-4 text-[var(--color-text-faint)] absolute left-3.5 top-3" />
                 <input
                   type="password"
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-950 border border-slate-700/80 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="••••••••••••"
+                  required
+                  className="w-full rounded-xl bg-[var(--color-bg-card-subtle)] border border-[var(--color-border)] pl-10 pr-4 py-2.5 text-xs text-[var(--color-text-main)] placeholder:text-[var(--color-text-faint)] focus:outline-none focus:border-[#5BE1E6] transition font-mono"
                 />
               </div>
             </div>
 
-            {isRegister && (
-              <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 flex items-center gap-2.5 text-xs text-blue-300">
-                <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>Iniciarás en el plan <strong>Free (250 consultas gratis)</strong> sin tarjeta de crédito.</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg shadow-blue-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Procesando...</span>
-                </>
-              ) : (
-                <>
-                  <span>{isRegister ? 'Registrar y Empezar' : 'Entrar al Panel'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 rounded-xl bg-[#5BE1E6] hover:bg-[#19BFB7] text-[#181919] font-bold text-xs flex items-center justify-center gap-2 transition shadow-[0_0_16px_rgba(91,225,230,0.3)] disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Procesando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{isRegister ? 'Crear Cuenta y Comenzar' : 'Acceder al Portal'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
           </form>
-        </div>
-
-        {/* Security badge footer */}
-        <div className="mt-6 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-          <Shield className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Autenticación Criptográfica SHA-256 & JWT Seguro</span>
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Copy, Check, AlertTriangle, RefreshCw, ShieldCheck, Terminal, Code2, Loader2, Info } from 'lucide-react';
+import { Key, Copy, Check, ShieldCheck, Loader2, RotateCw, Terminal, Info } from 'lucide-react';
 import { getApiKeyStatusApi, generateApiKeyApi, BACKEND_URL } from '@/lib/api';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface ApiKeyManagerProps {
   onApiKeyGenerated?: (prefix: string) => void;
@@ -20,6 +21,9 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
   const [copied, setCopied] = useState(false);
   const [showRotateConfirm, setShowRotateConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -65,190 +69,220 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
-        <p className="text-sm">Cargando credenciales de API...</p>
+      <div className="flex flex-col items-center justify-center py-20 text-[var(--color-text-muted)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#5BE1E6] mb-3" />
+        <p className="text-sm font-mono">Cargando credenciales de API...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
+    <div className="space-y-8 max-w-[896px] mx-auto py-2">
+      {/* Título de la Sección */}
       <div>
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
-          <Key className="w-6 h-6 text-blue-400" />
-          Credenciales de Integración (API Key)
-        </h2>
-        <p className="text-sm text-slate-400 mt-1">
+        <h1 className="text-2xl sm:text-[26px] font-bold font-heading text-[var(--color-text-main)] flex items-center gap-3">
+          <Key className={`w-6 h-6 ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`} />
+          <span>Credenciales de Integración (API Key)</span>
+        </h1>
+        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
           Usa tu API Key secreta para autenticar las peticiones de tus aplicaciones y servidores hacia la API de Compliance.
         </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300">
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400">
           {errorMsg}
         </div>
       )}
 
-      {/* MODAL / BANNER DE CLAVE RECIÉN GENERADA (SE MUESTRA UNA ÚNICA VEZ) */}
+      {/* BANNER DE CLAVE RECIÉN GENERADA (Pantalla 03 de la Maqueta Zodall) */}
       {newRawKey && (
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-950/60 to-slate-900 border-2 border-emerald-500/60 p-6 shadow-2xl relative overflow-hidden">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
-              <ShieldCheck className="w-6 h-6" />
+        <section
+          className={`border-2 rounded-2xl p-6 flex flex-col sm:flex-row gap-4 shadow-xl transition ${
+            isDark
+              ? 'border-[#10a674] bg-gradient-to-b from-[#0a2a2a] to-[#1d1f1f]'
+              : 'border-[#0a8f5a] bg-gradient-to-b from-[#e1f5ee] to-[#ffffff]'
+          }`}
+        >
+          <span
+            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${
+              isDark ? 'bg-[#0b3d36] text-[#10d98a]' : 'bg-[#c5eedd] text-[#0a8f5a]'
+            }`}
+          >
+            <ShieldCheck className="w-6 h-6" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className={`text-base font-bold ${isDark ? 'text-[#2be39a]' : 'text-[#0a8f5a]'}`}>
+              ¡Tu nueva API Key ha sido generada exitosamente!
             </div>
-            <div className="flex-1">
-              <h3 className="text-base font-bold text-emerald-300">
-                ¡Tu nueva API Key ha sido generada exitosamente!
-              </h3>
-              <p className="text-xs text-slate-300 mt-1">
-                Guarda esta clave en un lugar seguro (archivo <code className="bg-slate-950 px-1.5 py-0.5 rounded text-emerald-400">.env</code> de tu servidor).{' '}
-                <strong className="text-white">Por estrictas políticas de ciberseguridad, esta clave NUNCA más se mostrará completa.</strong>
-              </p>
+            <p className="my-2 text-xs leading-relaxed text-[var(--color-text-main)]">
+              Guarda esta clave en un lugar seguro (archivo{' '}
+              <code
+                className={`font-mono px-2 py-0.5 rounded text-[11px] ${
+                  isDark ? 'text-[#10d98a] bg-[#06181c]' : 'text-[#0a8f5a] bg-[#d5f3e6]'
+                }`}
+              >
+                .env
+              </code>{' '}
+              de tu servidor). <b>Por estrictas políticas de ciberseguridad, esta clave NUNCA más se mostrará completa.</b>
+            </p>
 
-              <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-950/90 border border-emerald-500/40 rounded-xl p-2.5 font-mono text-sm text-emerald-200">
-                <span className="flex-1 select-all break-all px-2 py-1">{newRawKey}</span>
-                <button
-                  onClick={() => handleCopy(newRawKey)}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-md transition shrink-0"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>¡Copiada!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Copiar Clave</span>
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center justify-between gap-3 border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-3 flex-wrap mt-3">
+              <span className="font-mono text-sm font-semibold text-[#10d98a] break-all select-all">
+                {newRawKey}
+              </span>
+              <button
+                onClick={() => handleCopy(newRawKey)}
+                className="font-mono text-xs font-bold text-[#181919] bg-[#5BE1E6] hover:bg-[#19BFB7] rounded-lg px-4 py-2 transition flex items-center gap-1.5 shrink-0"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <span>⧉</span>}
+                <span>{copied ? '¡Copiada!' : 'Copiar Clave'}</span>
+              </button>
+            </div>
 
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => setNewRawKey(null)}
-                  className="text-xs text-slate-400 hover:text-white underline underline-offset-4"
-                >
-                  Ya la guardé de forma segura, ocultar
-                </button>
-              </div>
+            <div className="text-right mt-3">
+              <button
+                onClick={() => setNewRawKey(null)}
+                className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] underline transition"
+              >
+                Ya la guardé de forma segura, ocultar
+              </button>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* ESTADO DE LA API KEY */}
-      {!hasApiKey ? (
-        // Estado: Aún no tiene clave
-        <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-8 text-center backdrop-blur-md">
-          <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
-            <Key className="w-7 h-7" />
-          </div>
-          <h3 className="text-lg font-bold text-white">Aún no has generado una API Key</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
-            Para que tu tienda en línea o sistema pueda realizar consultas automáticas contra las listas restrictivas, necesitas generar tu primera clave secreta.
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={handleGenerate}
-              disabled={actionLoading}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-xl shadow-blue-500/25 transition disabled:opacity-50"
-            >
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-              <span>Generar API Key</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        // Estado: Ya tiene clave activa
-        <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6 backdrop-blur-md space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm font-semibold text-white">API Key Principal de Producción</span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Activa
+      {/* TARJETA DE ESTADO DE LA API KEY (Pantalla 02) */}
+      <section className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <b className="text-sm text-[var(--color-text-main)]">API Key Principal de Producción</b>
+              {hasApiKey ? (
+                <span
+                  className={`text-xs px-2.5 py-0.5 rounded-full border ${
+                    isDark
+                      ? 'text-[#10d98a] bg-[#06251f] border-[#0d4a3a]'
+                      : 'text-[#0a8f5a] bg-[#e1f5ee] border-[#a8dfc9]'
+                  }`}
+                >
+                  ● Activa
                 </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-1 font-mono">
-                Prefijo Identificador: <strong className="text-slate-200">{prefix}••••••••••••••••</strong>
-              </p>
-              {lastGenerated && (
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Última actualización: {new Date(lastGenerated).toLocaleString('es-CO')}
-                </p>
+              ) : (
+                <span className="text-xs px-2.5 py-0.5 rounded-full border text-amber-500 bg-amber-500/10 border-amber-500/30">
+                  Sin Generar
+                </span>
               )}
             </div>
 
-            <div>
-              {!showRotateConfirm ? (
-                <button
-                  onClick={() => setShowRotateConfirm(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Rotar / Regenerar Clave</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={actionLoading}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold shadow-md transition"
-                  >
-                    {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>Confirmar Rotación</span>
-                  </button>
-                  <button
-                    onClick={() => setShowRotateConfirm(false)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white text-xs font-medium"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
+            <div className="font-mono text-xs text-[var(--color-text-faint)] mt-2.5 break-all">
+              Prefijo Identificador:{' '}
+              <b className="text-[var(--color-text-main)] font-semibold inline-block">
+                {prefix ? `${prefix}••••••••` : 'No asignado'}
+              </b>
+            </div>
+
+            <div className="text-[11px] text-[var(--color-text-faint)] mt-2">
+              Última actualización: {lastGenerated ? new Date(lastGenerated).toLocaleString('es-CO') : 'Nunca'}
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 flex items-start gap-3 text-xs text-slate-300">
-            <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-            <span>
-              La clave secreta completa solo se mostró al momento de su creación. Si la extraviaste o consideras que se ha visto comprometida, utiliza el botón de <strong>Rotar Clave</strong> para revocarla de inmediato y generar una nueva.
-            </span>
+          <div className="w-full sm:w-auto">
+            {hasApiKey ? (
+              <button
+                onClick={() => setShowRotateConfirm(true)}
+                disabled={actionLoading}
+                className={`w-full sm:w-auto text-xs font-bold rounded-lg px-4 py-2.5 transition border flex items-center justify-center gap-1.5 ${
+                  isDark
+                    ? 'text-white bg-[#262929] border-[#3a3d3d] hover:bg-[#323636]'
+                    : 'text-[#181919] bg-[#eaf0f0] border-[#cfd8d8] hover:bg-[#dfe6e6]'
+                }`}
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Rotar / Regenerar Clave</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleGenerate}
+                disabled={actionLoading}
+                className="w-full sm:w-auto text-xs font-bold text-[#181919] bg-[#5BE1E6] hover:bg-[#19BFB7] rounded-lg px-4 py-2.5 transition shadow-[0_0_16px_rgba(91,225,230,0.3)] text-center"
+              >
+                {actionLoading ? 'Generando...' : 'Generar API Key'}
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* GUÍA TÉCNICA RÁPIDA DE USO */}
-      <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-4">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-blue-400" />
-          ¿Cómo consumir la API con tu clave?
-        </h3>
-        <p className="text-xs text-slate-400">
-          Debes incluir tu API Key en la cabecera HTTP <code className="text-blue-300 bg-slate-950 px-1.5 py-0.5 rounded">x-api-key</code> de cada solicitud enviada al servidor:
+        {/* Modal de confirmación para rotar */}
+        {showRotateConfirm && (
+          <div className="mt-5 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs text-[var(--color-text-main)] space-y-3">
+            <p className="font-semibold text-amber-400">
+              ⚠️ ¿Estás seguro de que deseas rotar la API Key de producción?
+            </p>
+            <p className="text-[var(--color-text-muted)] leading-relaxed">
+              La clave actual dejará de funcionar de forma inmediata. Cualquier aplicación, microservicio o cron que la esté utilizando perderá acceso hasta que actualices su variable de entorno.
+            </p>
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={() => setShowRotateConfirm(false)}
+                className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={actionLoading}
+                className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs"
+              >
+                {actionLoading ? 'Rotando...' : 'Sí, revocar y generar nueva'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="border-t border-[var(--color-border)] my-6" />
+
+        {/* Callout Informativo */}
+        <div
+          className={`flex gap-3 border rounded-xl p-4 text-xs leading-relaxed ${
+            isDark
+              ? 'border-[#1f5456] bg-[#12292b] text-[#f2f6f6]'
+              : 'border-[#9ddfe2] bg-[#e0f6f7] text-[#181919]'
+          }`}
+        >
+          <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`} />
+          <span>
+            La clave secreta completa solo se mostró al momento de su creación. Si la extraviaste o consideras que se ha visto comprometida, utiliza el botón de <b>Rotar Clave</b> para revocarla de inmediato y generar una nueva.
+          </span>
+        </div>
+      </section>
+
+      {/* INSTRUCCIONES DE INTEGRACIÓN / CURL (Pantalla 02) */}
+      <section className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-6">
+        <div className="flex items-center gap-2.5 text-sm font-bold text-[var(--color-text-main)]">
+          <Terminal className={`w-4 h-4 ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`} />
+          <span>¿Cómo consumir la API con tu clave?</span>
+        </div>
+        <p className="text-xs text-[var(--color-text-muted)] mt-4 mb-4">
+          Debes incluir tu API Key en la cabecera HTTP{' '}
+          <code
+            className={`font-mono rounded px-2 py-0.5 mx-1 ${
+              isDark ? 'text-[#87e9ed] bg-[#181919]' : 'text-[#0b8a86] bg-[#dfe6e6]'
+            }`}
+          >
+            x-api-key
+          </code>{' '}
+          de cada solicitud enviada al servidor:
         </p>
 
-        <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto space-y-1">
-          <div className="text-slate-500">// Ejemplo cURL hacia tu servidor en producción:</div>
-          <div>
-            curl -X POST {BACKEND_URL}/compliance/verify \
-          </div>
-          <div className="text-blue-400 pl-4">
-            -H &quot;Content-Type: application/json&quot; \
-          </div>
-          <div className="text-emerald-400 pl-4">
-            -H &quot;x-api-key: {prefix ? `${prefix}...` : 'TU_API_KEY_AQUI'}&quot; \
-          </div>
-          <div className="text-amber-300 pl-4">
-            -d &apos;{JSON.stringify({ queried_name: "Nombre Sujeto", queried_document: "123456789" })}&apos;
-          </div>
-        </div>
-      </div>
+        <pre className="m-0 border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4 font-mono text-xs leading-relaxed text-[var(--color-text-main)] overflow-x-auto">
+          <span className="text-[var(--color-text-faint)]">// Ejemplo cURL hacia el endpoint oficial de producción:</span>
+          {'\n'}curl -X POST https://api.zodall.app/api/v1/compliance/verify \{'\n'}
+          {'  '}<span className="text-[#5BE1E6]">-H "Content-Type: application/json"</span> \{'\n'}
+          {'  '}<span className="text-[#10d98a]">-H "x-api-key: {prefix || 'rtk_live_...'}"</span> \{'\n'}
+          {'  '}<span className="text-[#f5b50a]">-d &apos;{"{"}&quot;queried_name&quot;:&quot;Nicolas Maduro&quot;,&quot;queried_document&quot;:&quot;123456789&quot;{"}"}&apos;</span>
+        </pre>
+      </section>
     </div>
   );
 }

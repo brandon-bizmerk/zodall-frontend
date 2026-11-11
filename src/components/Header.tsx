@@ -1,184 +1,247 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import {
-  ShieldCheck,
-  Key,
-  FileCode2,
   BarChart3,
-  RefreshCw,
-  LogOut,
+  Key,
   CreditCard,
-  User,
+  History,
+  LogOut,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
-export type TabType = 'metrics' | 'apikey' | 'plans';
+export type TabType = 'metrics' | 'history' | 'apikey' | 'plans' | 'admin-plans';
 
 interface HeaderProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
-  backendOnline: boolean | null;
-  checkingBackend: boolean;
-  onRefreshBackend: () => void;
   companyName: string;
   userName: string;
   planName: string;
+  isSuperAdmin?: boolean;
   onLogout: () => void;
 }
 
 export function Header({
   activeTab,
   onTabChange,
-  backendOnline,
-  checkingBackend,
-  onRefreshBackend,
   companyName,
   userName,
   planName,
+  isSuperAdmin = false,
   onLogout,
 }: HeaderProps) {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo e Identidad */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-lg shadow-blue-500/25 text-white">
-              <ShieldCheck className="w-6 h-6" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    backendOnline ? 'bg-emerald-400' : 'bg-rose-400'
-                  }`}
+    <>
+      <header className="sticky top-0 z-40 h-16 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-card-subtle)] px-3 sm:px-7 flex items-center justify-between gap-2 sm:gap-4 transition-colors">
+        {/* Izquierda: Logo Zodall + Badge Plan + Compañía */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="relative w-[110px] sm:w-[148px] h-8 sm:h-9 flex items-center">
+              {isDark ? (
+                <Image
+                  src="/zodall-logo-turquesa.png"
+                  alt="Zodall"
+                  width={150}
+                  height={36}
+                  priority
+                  className="object-contain object-left"
                 />
-                <span
-                  className={`relative inline-flex rounded-full h-3 w-3 ${
-                    backendOnline ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`}
+              ) : (
+                <Image
+                  src="/zodall-logo-carbon.png"
+                  alt="Zodall"
+                  width={150}
+                  height={36}
+                  priority
+                  className="object-contain object-left"
                 />
-              </span>
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold tracking-tight text-white">RegTech</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full">
-                  {planName || 'Free'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 truncate max-w-[180px] sm:max-w-xs">
-                {companyName}
-              </p>
-            </div>
+            <span
+              className={`text-[9px] sm:text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full border uppercase shrink-0 ${
+                isDark
+                  ? 'text-[#5BE1E6] bg-[#123a3b] border-[#1f6061]'
+                  : 'text-[#0b8a86] bg-[#e0f6f7] border-[#9ddfe2]'
+              }`}
+            >
+              {planName || 'FREE'}
+            </span>
           </div>
-
-          {/* Navegación por Pestañas */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800/80">
-            <button
-              onClick={() => onTabChange('metrics')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeTab === 'metrics'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => onTabChange('apikey')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeTab === 'apikey'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Key className="w-3.5 h-3.5" />
-              <span>API Key</span>
-            </button>
-
-            <button
-              onClick={() => onTabChange('plans')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                activeTab === 'plans'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>Planes</span>
-            </button>
-          </nav>
-
-          {/* Estado del Backend y Usuario */}
-          <div className="flex items-center gap-3">
-            {/* Status backend indicator */}
-            <button
-              onClick={onRefreshBackend}
-              title={backendOnline ? 'API Conectada' : 'API Desconectada'}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 hover:text-white transition"
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  backendOnline ? 'bg-emerald-400' : 'bg-rose-500'
-                }`}
-              />
-              <span className="hidden sm:inline">
-                {backendOnline ? 'API Online' : 'Reconectando...'}
-              </span>
-              <RefreshCw
-                className={`w-3 h-3 text-slate-500 ${checkingBackend ? 'animate-spin' : ''}`}
-              />
-            </button>
-
-            {/* User Profile Info & Logout */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div className="hidden sm:block text-right">
-                <span className="text-xs font-bold text-white block leading-tight">{userName}</span>
-                <span className="text-[10px] text-slate-400">Admin</span>
-              </div>
-              <button
-                onClick={onLogout}
-                title="Cerrar Sesión"
-                className="p-2 rounded-lg bg-slate-900 hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-500/20 transition"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
+          <div className="hidden lg:block border-l border-[var(--color-border)] pl-3 text-[11px] text-[var(--color-text-faint)] truncate max-w-[180px]">
+            {companyName}
           </div>
         </div>
 
-        {/* Mobile Navigation bar */}
-        <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-800/60">
+        {/* Centro: Navegación por pestañas (Desktop) */}
+        <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
           <button
             onClick={() => onTabChange('metrics')}
-            className={`flex flex-col items-center gap-1 text-[10px] font-semibold ${
-              activeTab === 'metrics' ? 'text-blue-400' : 'text-slate-400'
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              activeTab === 'metrics'
+                ? 'bg-[#5BE1E6] text-[#181919] shadow-sm'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
+            <BarChart3 className="w-3.5 h-3.5" />
             <span>Dashboard</span>
           </button>
+
+          <button
+            onClick={() => onTabChange('history')}
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              activeTab === 'history'
+                ? 'bg-[#5BE1E6] text-[#181919] shadow-sm'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Historial</span>
+          </button>
+
           <button
             onClick={() => onTabChange('apikey')}
-            className={`flex flex-col items-center gap-1 text-[10px] font-semibold ${
-              activeTab === 'apikey' ? 'text-blue-400' : 'text-slate-400'
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              activeTab === 'apikey'
+                ? 'bg-[#5BE1E6] text-[#181919] shadow-sm'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
             }`}
           >
-            <Key className="w-4 h-4" />
+            <Key className="w-3.5 h-3.5" />
             <span>API Key</span>
           </button>
+
           <button
             onClick={() => onTabChange('plans')}
-            className={`flex flex-col items-center gap-1 text-[10px] font-semibold ${
-              activeTab === 'plans' ? 'text-blue-400' : 'text-slate-400'
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              activeTab === 'plans'
+                ? 'bg-[#5BE1E6] text-[#181919] shadow-sm'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
             }`}
           >
-            <CreditCard className="w-4 h-4" />
+            <CreditCard className="w-3.5 h-3.5" />
             <span>Planes</span>
           </button>
+
+          {isSuperAdmin && (
+            <button
+              onClick={() => onTabChange('admin-plans')}
+              className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                activeTab === 'admin-plans'
+                  ? 'bg-indigo-500 text-white shadow-sm'
+                  : 'text-indigo-400 hover:text-indigo-300'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Admin Planes</span>
+            </button>
+          )}
+        </nav>
+
+        {/* Derecha: Botón Tema + Status Backend + Info Usuario + Logout */}
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Toggle Dark / Light Theme */}
+          <button
+            onClick={toggleTheme}
+            title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition"
+          >
+            {isDark ? <Sun className="w-4 h-4 text-[#5BE1E6]" /> : <Moon className="w-4 h-4 text-[#0b8a86]" />}
+          </button>
+
+          {/* Usuario y Logout */}
+          <div className="border-l border-[var(--color-border)] pl-1.5 sm:pl-3 flex items-center gap-1.5 sm:gap-2">
+            <div className="text-right hidden sm:block">
+              <div className="text-xs font-bold text-[var(--color-text-main)] leading-none truncate max-w-[120px]">{userName}</div>
+              <div className="text-[10px] text-[var(--color-text-faint)] mt-0.5">
+                {isSuperAdmin ? (
+                  <span className="text-indigo-400 font-semibold">SuperAdmin</span>
+                ) : (
+                  'Admin'
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              title="Cerrar Sesión"
+              className="w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-rose-500 hover:border-rose-500/40 transition shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Barra de navegación inferior flotante exclusiva para móviles */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-[var(--color-bg-card)] border-t border-[var(--color-border)] px-2 flex items-center justify-around shadow-2xl backdrop-blur-lg">
+        <button
+          onClick={() => onTabChange('metrics')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition ${
+            activeTab === 'metrics'
+              ? 'text-[#5BE1E6] font-bold'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span className="text-[10px]">Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('history')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition ${
+            activeTab === 'history'
+              ? 'text-[#5BE1E6] font-bold'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span className="text-[10px]">Historial</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('apikey')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition ${
+            activeTab === 'apikey'
+              ? 'text-[#5BE1E6] font-bold'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+          }`}
+        >
+          <Key className="w-4 h-4" />
+          <span className="text-[10px]">API Key</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('plans')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition ${
+            activeTab === 'plans'
+              ? 'text-[#5BE1E6] font-bold'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span className="text-[10px]">Planes</span>
+        </button>
+
+        {isSuperAdmin && (
+          <button
+            onClick={() => onTabChange('admin-plans')}
+            className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition ${
+              activeTab === 'admin-plans'
+                ? 'text-indigo-400 font-bold'
+                : 'text-[var(--color-text-muted)] hover:text-indigo-300'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px]">Admin</span>
+          </button>
+        )}
+      </nav>
+    </>
   );
 }

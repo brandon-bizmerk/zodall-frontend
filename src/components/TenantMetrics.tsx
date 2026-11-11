@@ -2,30 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  BarChart3,
   CreditCard,
   Zap,
-  ShieldCheck,
-  Server,
   Layers,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
-  Loader2,
   Key,
+  History,
+  CheckCircle2,
+  ArrowRight,
+  Server,
+  Layers3,
+  Shield,
+  Activity,
 } from 'lucide-react';
 import { TenantInfo } from '@/types/auth';
-import { getTenantMetricsApi } from '@/lib/api';
+import { useTheme } from '@/context/ThemeContext';
 
 interface TenantMetricsProps {
   tenant: TenantInfo;
-  onNavigateTab: (tab: 'metrics' | 'apikey' | 'plans') => void;
+  onNavigateTab: (tab: 'metrics' | 'apikey' | 'plans' | 'history') => void;
   onRefreshMetrics?: () => void;
 }
 
 export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshMetrics }: TenantMetricsProps) {
   const [tenant, setTenant] = useState<TenantInfo>(initialTenant);
-  const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     setTenant(initialTenant);
@@ -41,189 +42,264 @@ export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshM
   const usagePercentage = limit > 0 ? Math.min(100, Math.round((count / limit) * 100)) : 0;
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Resumen Principal del Tenant */}
-      <div className="bg-slate-900/80 p-6 sm:p-8 rounded-2xl border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6 backdrop-blur-md shadow-xl">
-        <div className="flex items-start sm:items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 shrink-0">
-            <CreditCard className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-xl font-extrabold text-white">{tenant.company_name}</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+    <div className="space-y-8 max-w-[1152px] mx-auto py-2">
+      {/* 1. Header Card Principal */}
+      <section className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-[20px] p-5 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+        <div className="flex items-start sm:items-center gap-4 sm:gap-5 w-full md:w-auto">
+          <span className="w-12 h-12 sm:w-14 sm:h-14 rounded-[14px] bg-[#19BFB7] flex items-center justify-center text-white shadow-[0_0_20px_rgba(25,191,183,0.35)] shrink-0">
+            <CreditCard className="w-6 h-6 sm:w-7 sm:h-7" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-2xl font-bold font-heading text-[var(--color-text-main)] truncate">
+                {tenant.company_name}
+              </h1>
+              <span
+                className={`text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 rounded-full border ${
+                  isDark
+                    ? 'text-[#10d98a] bg-[#06251f] border-[#0d4a3a]'
+                    : 'text-[#0a8f5a] bg-[#e1f5ee] border-[#a8dfc9]'
+                }`}
+              >
                 {tenant.account_status === 'ACTIVE' ? 'Cuenta Activa' : tenant.account_status}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Plan Actual: <strong className="text-blue-400">{tenant.plan_name || 'Free'}</strong>
-              {tenant.price_monthly > 0 && <span> (${tenant.price_monthly} USD/mes)</span>} • {tenant.email}
-            </p>
+            <div className="text-xs text-[var(--color-text-muted)] mt-1 truncate">
+              Plan Actual:{' '}
+              <b className={isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}>
+                {tenant.plan_name || 'Free'}
+              </b>{' '}
+              • <span className="opacity-80">{tenant.email}</span>
+            </div>
           </div>
         </div>
 
-        {/* Barra de progreso de cuota */}
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 min-w-[280px]">
-          <div className="flex justify-between items-center text-xs mb-2">
-            <span className="text-slate-400 font-medium">Consumo de Consultas</span>
-            <span className="font-mono font-bold text-white">
+        {/* Indicador de Consumo */}
+        <div className="w-full md:w-[280px] border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4 box-border">
+          <div className="flex justify-between items-center text-xs text-[var(--color-text-muted)]">
+            <span>Consumo de Consultas</span>
+            <b className="font-mono text-[var(--color-text-main)]">
               {count.toLocaleString()} / {limit.toLocaleString()}
-            </span>
+            </b>
           </div>
-          <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+          <div className="h-2 rounded-full bg-[var(--color-border)] my-3 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                usagePercentage > 85 ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-500 to-indigo-500'
-              }`}
-              style={{ width: `${Math.max(5, usagePercentage)}%` }}
+              className="h-full rounded-full bg-[#19BFB7] transition-all duration-500"
+              style={{ width: `${Math.max(4, usagePercentage)}%` }}
             />
           </div>
-          <div className="flex justify-between items-center text-[11px] text-slate-500 mt-2">
+          <div className="flex justify-between items-center text-[11px] text-[var(--color-text-faint)]">
             <span>{usagePercentage}% consumido</span>
             <button
               onClick={() => onNavigateTab('plans')}
-              className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-0.5"
+              className={`font-bold hover:underline ${
+                isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'
+              }`}
             >
-              <span>Mejorar Plan</span>
-              <ArrowRight className="w-3 h-3" />
+              Mejorar Plan →
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Tarjetas KPI de Estado */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs uppercase font-semibold tracking-wider">Plan Activo</span>
-            <CreditCard className="w-4 h-4 text-blue-400" />
+      {/* 2. Grid de KPIs */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+        {/* KPI 1 */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-5">
+          <div className="flex justify-between items-center text-xs tracking-wider text-[var(--color-text-muted)] font-semibold uppercase">
+            <span>Plan Activo</span>
+            <CreditCard className={`w-4 h-4 ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`} />
           </div>
-          <div className="text-2xl font-bold text-white capitalize">{tenant.plan_name || 'Free'}</div>
-          <p className="text-[11px] text-slate-500">{limit.toLocaleString()} consultas asignadas</p>
+          <div className="text-2xl font-bold font-heading text-[var(--color-text-main)] my-3 capitalize">
+            {tenant.plan_name || 'Free'}
+          </div>
+          <div className="text-[11px] text-[var(--color-text-faint)]">
+            {limit.toLocaleString()} consultas asignadas
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs uppercase font-semibold tracking-wider">Consultas Disponibles</span>
-            <Layers className="w-4 h-4 text-emerald-400" />
+        {/* KPI 2 */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-5">
+          <div className="flex justify-between items-center text-xs tracking-wider text-[var(--color-text-muted)] font-semibold uppercase">
+            <span>Consultas Disponibles</span>
+            <Layers3 className="w-4 h-4 text-[#28e3da]" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400 font-mono">
+          <div className="text-2xl font-bold font-mono text-[#10d98a] my-3">
             {remaining.toLocaleString()}
           </div>
-          <p className="text-[11px] text-slate-500">Saldo restante de este mes</p>
+          <div className="text-[11px] text-[var(--color-text-faint)]">
+            Saldo restante de este mes
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs uppercase font-semibold tracking-wider">API Key</span>
-            <Key className="w-4 h-4 text-amber-400" />
+        {/* KPI 3 */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-5">
+          <div className="flex justify-between items-center text-xs tracking-wider text-[var(--color-text-muted)] font-semibold uppercase">
+            <span>API Key</span>
+            <Key className="w-4 h-4 text-[#f5b50a]" />
           </div>
-          <div className="text-lg font-bold text-white font-mono truncate">
-            {tenant.has_api_key && tenant.api_key_prefix ? `${tenant.api_key_prefix}...` : 'Sin Generar'}
+          <div className="text-lg font-bold font-mono text-[var(--color-text-main)] my-3.5 truncate">
+            {tenant.has_api_key && tenant.api_key_prefix
+              ? `${tenant.api_key_prefix}••••••••`
+              : 'Sin Generar'}
           </div>
-          <p className="text-[11px] text-slate-500">
+          <div className="text-[11px] text-[var(--color-text-faint)]">
             {tenant.has_api_key ? 'Clave de producción activa' : 'Requiere generación manual'}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs uppercase font-semibold tracking-wider">SLA de Respuesta</span>
-            <Zap className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="text-2xl font-bold text-indigo-400 font-mono">&lt; 15 ms</div>
-          <p className="text-[11px] text-slate-500">Fail-Open garantizado a 400ms</p>
         </div>
-      </div>
 
-      {/* Accesos Directos a Módulos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 flex flex-col justify-between hover:border-slate-700 transition">
+        {/* KPI 4 */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-5">
+          <div className="flex justify-between items-center text-xs tracking-wider text-[var(--color-text-muted)] font-semibold uppercase">
+            <span>SLA de Respuesta</span>
+            <Zap className="w-4 h-4 text-[#28e3da]" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-[#28e3da] my-3">
+            &lt; 15 ms
+          </div>
+          <div className="text-[11px] text-[var(--color-text-faint)]">
+            Fail-Open garantizado a 400ms
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Accesos Directos a Módulos (Estilo Maqueta Zodall) */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+        {/* Historial */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-                <Key className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">Módulo de API Key</h3>
+            <div className="flex items-center gap-3.5">
+              <span
+                className={`w-9 h-9 rounded-xl flex items-center justify-center font-mono ${
+                  isDark
+                    ? 'bg-[#12292b] text-[#5BE1E6]'
+                    : 'bg-[#e0f6f7] text-[#0b8a86]'
+                }`}
+              >
+                <History className="w-4 h-4" />
+              </span>
+              <b className="text-base text-[var(--color-text-main)]">Histórico de Consultas</b>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-[12.5px] leading-relaxed text-[var(--color-text-muted)] mt-4 mb-4">
+              Consulta la trazabilidad, hashes criptográficos SHA-256 y veredictos de todas tus verificaciones.
+            </p>
+          </div>
+          <div>
+            <button
+              onClick={() => onNavigateTab('history')}
+              className={`inline-block text-xs font-bold rounded-lg px-4 py-2.5 transition border ${
+                isDark
+                  ? 'text-white bg-[#262929] border-[#3a3d3d] hover:bg-[#323636]'
+                  : 'text-[#181919] bg-[#eaf0f0] border-[#cfd8d8] hover:bg-[#dfe6e6]'
+              }`}
+            >
+              Ver Historial &nbsp;→
+            </button>
+          </div>
+        </div>
+
+        {/* API Key */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-3.5">
+              <span
+                className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  isDark
+                    ? 'bg-[#16302f] text-[#5BE1E6]'
+                    : 'bg-[#e0f6f7] text-[#0b8a86]'
+                }`}
+              >
+                <Key className="w-4 h-4" />
+              </span>
+              <b className="text-base text-[var(--color-text-main)]">Módulo de API Key</b>
+            </div>
+            <p className="text-[12.5px] leading-relaxed text-[var(--color-text-muted)] mt-4 mb-4">
               Genera tu clave secreta de producción, copia tu credencial o rótala si sospechas que fue expuesta.
             </p>
           </div>
-          <div className="mt-5">
+          <div>
             <button
               onClick={() => onNavigateTab('apikey')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition"
+              className={`inline-block text-xs font-bold rounded-lg px-4 py-2.5 transition border ${
+                isDark
+                  ? 'text-white bg-[#262929] border-[#3a3d3d] hover:bg-[#323636]'
+                  : 'text-[#181919] bg-[#eaf0f0] border-[#cfd8d8] hover:bg-[#dfe6e6]'
+              }`}
             >
-              <span>Ir a Módulo API Key</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Ir a Módulo API Key &nbsp;→
             </button>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 flex flex-col justify-between hover:border-slate-700 transition">
+        {/* Planes */}
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">Planes y Facturación</h3>
+            <div className="flex items-center gap-3.5">
+              <span
+                className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  isDark
+                    ? 'bg-[#231a10] text-[#f5b50a]'
+                    : 'bg-[#fdf1d6] text-[#9a6a00]'
+                }`}
+              >
+                <CreditCard className="w-4 h-4" />
+              </span>
+              <b className="text-base text-[var(--color-text-main)]">Planes y Facturación</b>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-[12.5px] leading-relaxed text-[var(--color-text-muted)] mt-4 mb-4">
               Consulta los límites de los planes Free, Personal, Pro y Enterprise. Aumenta tu volumen de consultas en cualquier momento.
             </p>
           </div>
-          <div className="mt-5">
+          <div>
             <button
               onClick={() => onNavigateTab('plans')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition shadow-md shadow-blue-500/20"
+              className="inline-block text-xs font-bold text-[#181919] bg-[#5BE1E6] hover:bg-[#19BFB7] rounded-lg px-4 py-2.5 transition shadow-[0_0_16px_rgba(91,225,230,0.3)]"
             >
-              <span>Ver Planes Disponibles</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Ver Planes Disponibles &nbsp;→
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Estado de las Listas y Scrapers */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-          <Server className="w-4 h-4 text-indigo-400" />
-          Fuentes de Cumplimiento Monitoreadas en tu API
-        </h3>
+      {/* 4. Fuentes Monitoreadas */}
+      <section className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-6">
+        <div className="text-xs tracking-wider font-semibold text-[var(--color-text-muted)] uppercase mb-4 flex items-center gap-2">
+          <Server className={`w-4 h-4 ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`} />
+          <span>FUENTES DE CUMPLIMIENTO MONITOREADAS EN TU API</span>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">OFAC SDN List (EE.UU.)</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4">
+            <div className="flex justify-between items-center gap-2 text-xs font-bold text-[var(--color-text-main)]">
+              <span>OFAC SDN List (EE.UU.)</span>
+              <span className="text-[#0a8f5a]">◉</span>
             </div>
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-xs leading-relaxed text-[var(--color-text-muted)] mt-3 mb-0">
               Sanciones financieras internacionales, narcotráfico y terrorismo global.
             </p>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">ONU Lista Consolidada</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4">
+            <div className="flex justify-between items-center gap-2 text-xs font-bold text-[var(--color-text-main)]">
+              <span>ONU Lista Consolidada</span>
+              <span className="text-[#0a8f5a]">◉</span>
             </div>
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-xs leading-relaxed text-[var(--color-text-muted)] mt-3 mb-0">
               Resoluciones del Consejo de Seguridad de las Naciones Unidas.
             </p>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">Colombia (PEPs y Órganos de Control)</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4">
+            <div className="flex justify-between items-center gap-2 text-xs font-bold text-[var(--color-text-main)]">
+              <span>Colombia (PEPs y Control)</span>
+              <span className="text-[#0a8f5a]">◉</span>
             </div>
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-xs leading-relaxed text-[var(--color-text-muted)] mt-3 mb-0">
               Inhabilidades de Procuraduría, Contraloría y antecedentes judiciales.
             </p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

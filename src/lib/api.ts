@@ -6,7 +6,10 @@ import {
   ApiKeyStatusResponse,
   GenerateApiKeyResponse,
   TenantMetricsData,
+  AdminUserItem,
+  AdminAuditLogsResponse,
 } from '@/types/auth';
+import { QueryHistoryItem } from '@/types/compliance';
 
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/v1';
@@ -62,6 +65,11 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   const response = await fetch(url, { ...options, headers });
 
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      // Token expirado o revocado: limpiar sesión para redirigir al login
+      removeAuthToken();
+    }
+
     let errorMsg = `Error HTTP ${response.status}: ${response.statusText}`;
     let errorData: any;
     try {
@@ -130,6 +138,37 @@ export async function getPlansApi(): Promise<SubscriptionPlan[]> {
   return apiFetch<SubscriptionPlan[]>('/tenants/plans');
 }
 
+/**
+ * Panel SuperAdmin: Actualiza el nombre, precio, límite y características de un plan
+ * sincronizando automáticamente en Stripe.
+ */
+export async function updatePlanAdminApi(
+  planId: string,
+  payload: {
+    name: string;
+    description?: string;
+    price_monthly: number;
+    query_limit: number;
+    features: string[];
+  }
+): Promise<{ message: string; plan: SubscriptionPlan }> {
+  return apiFetch<{ message: string; plan: SubscriptionPlan }>(`/tenants/admin/plans/${planId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createStripeCheckoutSessionApi(plan_id: string): Promise<{ url: string; sessionId: string }> {
+  return apiFetch<{ url: string; sessionId: string }>('/stripe/create-checkout-session', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id }),
+  });
+}
+
+export async function verifyStripeSessionApi(session_id: string): Promise<{ success: boolean; plan: string; query_limit: number }> {
+  return apiFetch<{ success: boolean; plan: string; query_limit: number }>(`/stripe/verify-session?session_id=${encodeURIComponent(session_id)}`);
+}
+
 export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: any }> {
   return apiFetch<{ message: string; plan: any }>('/tenants/upgrade-plan', {
     method: 'POST',
@@ -139,6 +178,30 @@ export async function upgradePlanApi(plan_id: string): Promise<{ message: string
 
 export async function getTenantMetricsApi(): Promise<TenantMetricsData> {
   return apiFetch<TenantMetricsData>('/tenants/metrics');
+}
+
+export async function getQueryHistoryApi(params?: {
+  search?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  order?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ total: number; limit: number; offset: number; data: QueryHistoryItem[] }> {
+  const query = new URLSearchParams();
+  if (params?.search) query.append('search', params.search);
+  if (params?.status && params.status !== 'all') query.append('status', params.status);
+  if (params?.dateFrom) query.append('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.append('dateTo', params.dateTo);
+  if (params?.order) query.append('order', params.order);
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return apiFetch<{ total: number; limit: number; offset: number; data: QueryHistoryItem[] }>(
+    `/tenants/query-history${qs}`
+  );
 }
 
 // ─── Health Check ────────────────────────────────────────────────────────────
@@ -167,15 +230,23 @@ export async function checkBackendHealth(): Promise<{ online: boolean; message?:
 }
 
 export async function verifyCompliance(
-  payload: { queried_name: string; queried_document: string; order_reference?: string },
-  apiKey: string = DEFAULT_API_KEY
+  payload: { queried_name: string; queried_document: string; order_reference?: string; strict_mode?: boolean },
+  apiKey?: string
 ): Promise<any> {
+  const cleanKey = (apiKey || '').trim();
+  if (!cleanKey) {
+    throw new ApiError(
+      'No se encontró una API Key válida configurada. Por favor genera o copia tu clave en el módulo de API Keys.',
+      401
+    );
+  }
+
   const endpoint = `${BACKEND_URL}/compliance/verify`;
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey.trim() || DEFAULT_API_KEY,
+      'x-api-key': cleanKey,
     },
     body: JSON.stringify(payload),
   });
@@ -186,4 +257,75 @@ export async function verifyCompliance(
   }
 
   return res.json();
+}
+
+/**
+ * Consulta de verificación de evidencia SAGRILAFT pública (Punto 9)
+ */
+export async function verifyProofApi(hash: string): Promise<any> {
+  const cleanHash = (hash || '').trim();
+  const endpoint = `${BACKEND_URL}/compliance/verify-proof/${cleanHash}`;
+  const res = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new ApiError(errorData?.message || `HTTP Error ${res.status}`, res.status, errorData);
+  }
+
+  return res.json();
+}
+
+/**
+ * SuperAdmin: Obtener listado de usuarios clientes y sus empresas
+ */
+export async function getAdminUsersApi(): Promise<AdminUserItem[]> {
+  return apiFetch<AdminUserItem[]>('/tenants/admin/users');
+}
+
+/**
+ * SuperAdmin: Activar o desactivar cuenta de usuario cliente
+ */
+export async function toggleAdminUserStatusApi(userId: string): Promise<any> {
+  return apiFetch<any>(`/tenants/admin/users/${userId}/toggle-status`, {
+    method: 'PUT',
+  });
+}
+
+/**
+ * SuperAdmin: Obtener auditoría global de logs
+ */
+export async function getAdminAuditLogsApi(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  match_only?: boolean;
+}): Promise<AdminAuditLogsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+  if (params?.search) query.append('search', params.search);
+  if (params?.match_only !== undefined) query.append('match_only', String(params.match_only));
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return apiFetch<AdminAuditLogsResponse>(`/tenants/admin/audit-logs${qs}`);
+}
+
+/**
+ * Actualizar perfil y/o contraseña del usuario autenticado
+ */
+export async function updateProfileApi(data: {
+  full_name?: string;
+  email?: string;
+  current_password?: string;
+  new_password?: string;
+}): Promise<any> {
+  return apiFetch<any>('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 }

@@ -73,3 +73,41 @@ export interface TenantMetricsData {
   has_api_key: boolean;
   api_key_prefix?: string | null;
 }
+
+export interface AdminUserItem {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  created_at: string;
+  tenant: {
+    id: string;
+    company_name: string;
+    account_status: string;
+    plan_name: string;
+    query_count: number;
+    query_limit: number;
+  } | null;
+}
+
+export interface AdminAuditLogItem {
+  id: string;
+  timestamp: string;
+  tenant_name: string;
+  tenant_id: string;
+  queried_name: string;
+  queried_document: string;
+  order_reference?: string | null;
+  match_found: boolean;
+  match_score: number;
+  response_time_ms: number;
+  served_from_cache: boolean;
+  integrity_proof_hash: string;
+}
+
+export interface AdminAuditLogsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  data: AdminAuditLogItem[];
+}

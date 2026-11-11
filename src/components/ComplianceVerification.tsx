@@ -146,28 +146,32 @@ export function ComplianceVerification({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Nombre Completo del Sujeto <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Nombre Completo o Razón Social <span className="text-rose-400">*</span></span>
+                <span className="text-[10px] text-slate-500 font-normal">Máx. 500 caract.</span>
               </label>
               <input
                 type="text"
                 value={queriedName}
+                maxLength={500}
                 onChange={(e) => setQueriedName(e.target.value)}
-                placeholder="Ej. Pablo Emilio Escobar Gaviria"
+                placeholder="Ej. Pablo Emilio Escobar Gaviria o Inversiones S.A.S."
                 className="w-full rounded-xl bg-slate-950 border border-slate-700/80 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Documento de Identificación / Pasaporte <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Documento / Pasaporte / NIT <span className="text-rose-400">*</span></span>
+                <span className="text-[10px] text-slate-500 font-normal">Máx. 100 caract.</span>
               </label>
               <input
                 type="text"
                 value={queriedDocument}
+                maxLength={100}
                 onChange={(e) => setQueriedDocument(e.target.value)}
-                placeholder="Ej. 123456789"
+                placeholder="Ej. 123456789 o 900123456-7"
                 className="w-full rounded-xl bg-slate-950 border border-slate-700/80 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition font-mono"
                 required
               />
@@ -176,11 +180,12 @@ export function ComplianceVerification({
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
                 <span>Referencia de Orden / ID de Transacción</span>
-                <span className="text-[10px] text-slate-500 font-normal">Opcional</span>
+                <span className="text-[10px] text-slate-500 font-normal">Opcional (Máx. 255)</span>
               </label>
               <input
                 type="text"
                 value={orderReference}
+                maxLength={255}
                 onChange={(e) => setOrderReference(e.target.value)}
                 placeholder="Ej. ORD-2026-99124"
                 className="w-full rounded-xl bg-slate-950 border border-slate-700/80 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition font-mono"
@@ -350,6 +355,11 @@ export function ComplianceVerification({
                     >
                       {result.match_score}%
                     </span>
+                    {result.match_type && (
+                      <span className="block mt-1 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                        {result.match_type === 'both' ? '🎯 Ambos' : result.match_type === 'document' ? '📄 Por Doc' : result.match_type === 'name' ? '🔤 Por Nombre' : 'Limpio'}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -450,35 +460,46 @@ export function ComplianceVerification({
               </div>
 
               {/* Hash Criptográfico de Integridad (SHA-256) */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-indigo-500/20 space-y-2">
+              <div className="bg-slate-950 p-4 rounded-xl border border-indigo-500/20 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
                     <Hash className="w-4 h-4 text-indigo-400" />
                     Prueba de Integridad Criptográfica (SHA-256)
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(result.integrity_proof_hash)}
-                    className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-200 transition"
-                  >
-                    {copiedHash ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">Copiado</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar Hash</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(result.integrity_proof_hash)}
+                      className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-200 transition"
+                    >
+                      {copiedHash ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400">Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar Hash</span>
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href={`http://localhost:3001/api/v1/compliance/verify-proof/${result.integrity_proof_hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition font-semibold"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Verificar SAGRILAFT</span>
+                    </a>
+                  </div>
                 </div>
                 <div className="font-mono text-xs text-slate-300 bg-slate-900 p-2.5 rounded-lg border border-slate-800 break-all select-all">
                   {result.integrity_proof_hash}
                 </div>
                 <p className="text-[10px] text-slate-500 leading-normal">
-                  Este hash certifica de forma inmutable ante auditores que la consulta fue realizada en esta fecha y con este resultado exacto, sin posibilidad de alteración posterior.
+                  Este hash certifica de forma inmutable ante auditores que la consulta fue realizada en esta fecha y con este resultado exacto, bajo custodia garantizada de 5 años.
                 </p>
               </div>
             </div>
