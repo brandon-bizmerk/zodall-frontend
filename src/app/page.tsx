@@ -60,6 +60,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUserProfile();
+    handleRefreshBackend();
+  }, [fetchUserProfile, handleRefreshBackend]);
+
+  useEffect(() => {
     if (!user || !tenant || paymentHandled.current) return;
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
