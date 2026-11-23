@@ -101,6 +101,10 @@ export async function loginApi(email: string, password: string): Promise<AuthRes
   return data;
 }
 
+export async function logoutApi(): Promise<void> {
+  await apiFetch('/auth/logout', { method: 'POST', signal: AbortSignal.timeout(5000) });
+}
+
 export async function registerApi(payload: {
   company_name: string;
   full_name: string;

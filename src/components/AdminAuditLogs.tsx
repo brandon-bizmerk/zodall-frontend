@@ -36,13 +36,14 @@ type ActiveTab = 'compliance' | 'events';
 // ─── Helpers para Event Logs ─────────────────────────────────────────────────
 
 const EVENT_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  AUTH_EVENT:          { label: 'Login',        color: 'text-sky-400 bg-sky-500/10 border-sky-500/30',      icon: LogIn },
+  AUTH_EVENT:          { label: 'Sesión',       color: 'text-sky-400 bg-sky-500/10 border-sky-500/30',      icon: LogIn },
   API_KEY_EVENT:       { label: 'API Key',      color: 'text-amber-400 bg-amber-500/10 border-amber-500/30', icon: Key },
   SUBSCRIPTION_EVENT:  { label: 'Suscripción',  color: 'text-violet-400 bg-violet-500/10 border-violet-500/30', icon: CreditCard },
 };
 
 const ACTION_LABELS: Record<string, string> = {
   LOGIN_SUCCESS:            'Inicio de sesión exitoso',
+  LOGOUT_SUCCESS:           'Cierre de sesión',
   API_KEY_GENERATED:        'API Key generada / rotada',
   SUBSCRIPTION_ACTIVATED:   'Suscripción activada (webhook)',
   SUBSCRIPTION_VERIFIED:    'Suscripción verificada (pago)',
@@ -68,6 +69,7 @@ export function AdminAuditLogs() {
   const [events, setEvents] = useState<EventLogItem[]>([]);
   const [eventsTotal, setEventsTotal] = useState(0);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const [eventsSearch, setEventsSearch] = useState('');
   const [eventsTypeFilter, setEventsTypeFilter] = useState('');
   const [eventsPage, setEventsPage] = useState(1);
@@ -96,6 +98,7 @@ export function AdminAuditLogs() {
   // ── Carga de Event logs ──
   const fetchEvents = async () => {
     setEventsLoading(true);
+    setEventsError(null);
     try {
       const offset = (eventsPage - 1) * eventsPageSize;
       const res = await getAdminEventLogsApi({
@@ -108,6 +111,7 @@ export function AdminAuditLogs() {
       setEventsTotal(res.total);
     } catch (err) {
       console.error('Error cargando event logs:', err);
+      setEventsError('No se pudieron cargar los eventos del sistema. Pulsa Actualizar para reintentar.');
     } finally {
       setEventsLoading(false);
     }
@@ -492,7 +496,7 @@ export function AdminAuditLogs() {
                   className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1 text-xs text-[var(--color-text-main)]"
                 >
                   <option value="">Todos</option>
-                  <option value="AUTH_EVENT">Login</option>
+                  <option value="AUTH_EVENT">Sesión (inicio y cierre)</option>
                   <option value="API_KEY_EVENT">API Key</option>
                   <option value="SUBSCRIPTION_EVENT">Suscripción</option>
                 </select>
@@ -524,11 +528,15 @@ export function AdminAuditLogs() {
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
                 <p className="text-xs font-mono">Cargando eventos del sistema...</p>
               </div>
+            ) : eventsError ? (
+              <div role="alert" className="p-12 text-center text-red-400 text-sm">
+                {eventsError}
+              </div>
             ) : events.length === 0 ? (
               <div className="p-12 text-center text-[var(--color-text-muted)] text-sm">
                 No hay eventos registrados con los criterios seleccionados.
                 <p className="text-xs mt-1 text-[var(--color-text-faint)]">
-                  Los logins, generaciones de API Keys y suscripciones aparecerán aquí automáticamente.
+                  Los inicios y cierres de sesión, generaciones de API Keys y suscripciones aparecerán aquí automáticamente.
                 </p>
               </div>
             ) : (

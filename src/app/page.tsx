@@ -9,7 +9,7 @@ import { AdminPlansDashboard } from '@/components/AdminPlansDashboard';
 import { TenantMetrics } from '@/components/TenantMetrics';
 import { QueryHistory } from '@/components/QueryHistory';
 import { AdminLayout } from '@/components/AdminLayout';
-import { getMeApi, getAuthToken, removeAuthToken, verifyStripeSessionApi } from '@/lib/api';
+import { getMeApi, getAuthToken, removeAuthToken, verifyStripeSessionApi, logoutApi } from '@/lib/api';
 import { UserProfile, TenantInfo, AuthResponse } from '@/types/auth';
 import { Loader2 } from 'lucide-react';
 
@@ -81,10 +81,16 @@ export default function Home() {
     fetchUserProfile();
   };
 
-  const handleLogout = () => {
-    removeAuthToken();
-    setUser(null);
-    setTenant(null);
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.error('Error registrando el cierre de sesión:', error);
+    } finally {
+      removeAuthToken();
+      setUser(null);
+      setTenant(null);
+    }
   };
 
   const handleApiKeyGenerated = useCallback((newPrefix: string) => {
