@@ -15,8 +15,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Download,
+  FileDown,
 } from 'lucide-react';
-import { getAdminAuditLogsApi } from '@/lib/api';
+import {
+  getAdminAuditLogsApi,
+  downloadFilteredAuditLogsPdf,
+  downloadIndividualCertificatePdf,
+} from '@/lib/api';
 import { AdminAuditLogItem } from '@/types/auth';
 
 export function AdminAuditLogs() {
@@ -27,6 +33,8 @@ export function AdminAuditLogs() {
   const [matchOnly, setMatchOnly] = useState(false);
   const [pageSize, setPageSize] = useState(15);
   const [page, setPage] = useState(1);
+  const [exportingReport, setExportingReport] = useState(false);
+  const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -57,6 +65,31 @@ export function AdminAuditLogs() {
     fetchLogs();
   };
 
+  const handleExportFilteredPdf = async () => {
+    setExportingReport(true);
+    try {
+      await downloadFilteredAuditLogsPdf({
+        search: search.trim() || undefined,
+        match_only: matchOnly,
+      });
+    } catch (err: any) {
+      alert(err.message || 'Error al exportar reporte PDF.');
+    } finally {
+      setExportingReport(false);
+    }
+  };
+
+  const handleDownloadCertificate = async (log: AdminAuditLogItem) => {
+    setDownloadingCertId(log.id);
+    try {
+      await downloadIndividualCertificatePdf(log.id, log.queried_document);
+    } catch (err: any) {
+      alert(err.message || 'Error al descargar el certificado individual.');
+    } finally {
+      setDownloadingCertId(null);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -75,14 +108,31 @@ export function AdminAuditLogs() {
           </p>
         </div>
 
-        <button
-          onClick={fetchLogs}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-card-subtle)] text-[var(--color-text-main)] transition shadow-sm self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Actualizar</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          {/* Botón Exportar PDF de Reporte Filtrado */}
+          <button
+            onClick={handleExportFilteredPdf}
+            disabled={exportingReport || loading || total === 0}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm disabled:opacity-50"
+            title="Exportar listado según los filtros de búsqueda actuales"
+          >
+            {exportingReport ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5" />
+            )}
+            <span>{exportingReport ? 'Generando PDF...' : 'Exportar Filtros (PDF)'}</span>
+          </button>
+
+          <button
+            onClick={fetchLogs}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-[var(--color-border)] bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-card-subtle)] text-[var(--color-text-main)] transition shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Actualizar</span>
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -161,11 +211,14 @@ export function AdminAuditLogs() {
                   <th className="py-3 px-4">Dictamen</th>
                   <th className="py-3 px-4">Latencia</th>
                   <th className="py-3 px-4">Hash Integridad (SHA-256)</th>
+                  <th className="py-3 px-4 text-right">Certificado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border-subtle)] text-[var(--color-text-main)]">
                 {logs.map((log) => {
                   const dateStr = new Date(log.timestamp).toLocaleString('es-CO');
+                  const isDownloadingCert = downloadingCertId === log.id;
+
                   return (
                     <tr key={log.id} className="hover:bg-[var(--color-bg-card-subtle)] transition">
                       <td className="py-3 px-4 text-xs font-mono text-[var(--color-text-muted)] whitespace-nowrap">
@@ -219,7 +272,7 @@ export function AdminAuditLogs() {
 
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-mono text-[var(--color-text-faint)] max-w-[140px] truncate" title={log.integrity_proof_hash}>
+                          <span className="text-[10px] font-mono text-[var(--color-text-faint)] max-w-[130px] truncate" title={log.integrity_proof_hash}>
                             {log.integrity_proof_hash}
                           </span>
                           <a
@@ -232,6 +285,23 @@ export function AdminAuditLogs() {
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </div>
+                      </td>
+
+                      {/* Botón para Certificado Individual PDF */}
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => handleDownloadCertificate(log)}
+                          disabled={isDownloadingCert}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition disabled:opacity-50"
+                          title="Descargar Certificado Oficial de Evidencia SAGRILAFT (PDF)"
+                        >
+                          {isDownloadingCert ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5" />
+                          )}
+                          <span>Certificado</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -271,4 +341,3 @@ export function AdminAuditLogs() {
     </div>
   );
 }
-

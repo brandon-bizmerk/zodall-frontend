@@ -18,9 +18,15 @@ import {
   Eye,
   X,
   Loader2,
+  FileText,
+  FileDown,
 } from 'lucide-react';
 import { QueryHistoryItem } from '@/types/compliance';
-import { getQueryHistoryApi } from '@/lib/api';
+import {
+  getQueryHistoryApi,
+  downloadClientHistoryPdf,
+  downloadIndividualCertificatePdf,
+} from '@/lib/api';
 import { useTheme } from '@/context/ThemeContext';
 
 // Datos mock iniciales para fallback visual
@@ -86,6 +92,8 @@ export function QueryHistory() {
   // Paginación: 10, 15, 30, 50 por página
   const [pageSize, setPageSize] = useState<number>(15);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -134,6 +142,31 @@ export function QueryHistory() {
     setSearchTerm('');
     setStatusFilter('all');
     setCurrentPage(1);
+  };
+
+  const handleExportFilteredPdf = async () => {
+    setExportingPdf(true);
+    try {
+      await downloadClientHistoryPdf({
+        search: searchTerm.trim() || undefined,
+        match_only: statusFilter === 'match',
+      });
+    } catch (err: any) {
+      alert(err.message || 'Error al exportar reporte PDF del historial.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleDownloadCertificate = async (item: QueryHistoryItem) => {
+    setDownloadingCertId(item.id);
+    try {
+      await downloadIndividualCertificatePdf(item.id, item.queried_document);
+    } catch (err: any) {
+      alert(err.message || 'Error al descargar certificado PDF.');
+    } finally {
+      setDownloadingCertId(null);
+    }
   };
 
   const filteredData = useMemo(() => {
@@ -196,7 +229,22 @@ export function QueryHistory() {
           </p>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
+          {/* Botón Exportar PDF con filtros */}
+          <button
+            onClick={handleExportFilteredPdf}
+            disabled={exportingPdf || isLoading || filteredData.length === 0}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#0b8a86] hover:bg-[#08736f] text-white transition shadow-sm disabled:opacity-50"
+            title="Exportar listado actual de consultas en formato PDF"
+          >
+            {exportingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#5BE1E6]" />
+            ) : (
+              <FileDown className="w-4 h-4 text-[#5BE1E6]" />
+            )}
+            <span>{exportingPdf ? 'Generando PDF...' : 'Exportar Filtros (PDF)'}</span>
+          </button>
+
           <button
             onClick={() => alert('Exportación CSV: los registros han sido copiados.')}
             className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
@@ -486,17 +534,37 @@ export function QueryHistory() {
 
                       {/* Acciones */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => setSelectedItem(item)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition ${
-                            isDark
-                              ? 'bg-[#262929] border-[#3a3d3d] text-white hover:bg-[#323636]'
-                              : 'bg-[#eaf0f0] border-[#cfd8d8] text-[#181919] hover:bg-[#dfe6e6]'
-                          }`}
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Detalle</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <button
+                            onClick={() => handleDownloadCertificate(item)}
+                            disabled={downloadingCertId === item.id}
+                            title="Descargar Certificado Oficial SAGRILAFT en PDF"
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition ${
+                              isDark
+                                ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-400 hover:bg-emerald-900/50'
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {downloadingCertId === item.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                            )}
+                            <span className="hidden sm:inline">PDF</span>
+                          </button>
+
+                          <button
+                            onClick={() => setSelectedItem(item)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition ${
+                              isDark
+                                ? 'bg-[#262929] border-[#3a3d3d] text-white hover:bg-[#323636]'
+                                : 'bg-[#eaf0f0] border-[#cfd8d8] text-[#181919] hover:bg-[#dfe6e6]'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Detalle</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -665,6 +733,19 @@ export function QueryHistory() {
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <button
+                onClick={() => handleDownloadCertificate(selectedItem)}
+                disabled={downloadingCertId === selectedItem.id}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold text-xs transition disabled:opacity-50"
+              >
+                {downloadingCertId === selectedItem.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+                <span>Descargar Certificado PDF</span>
+              </button>
+
               <button
                 onClick={() => setSelectedItem(null)}
                 className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#5BE1E6] hover:bg-[#19BFB7] text-[#181919] font-bold text-xs transition"

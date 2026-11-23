@@ -329,3 +329,104 @@ export async function updateProfileApi(data: {
     body: JSON.stringify(data),
   });
 }
+
+/**
+ * Descarga el Reporte Completo de Historial del Cliente filtrado en formato PDF
+ */
+export async function downloadClientHistoryPdf(params?: {
+  search?: string;
+  match_only?: boolean;
+}): Promise<void> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.search) query.append('search', params.search);
+  if (params?.match_only !== undefined) query.append('match_only', String(params.match_only));
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const url = `${BACKEND_URL}/tenants/query-history/export-pdf${qs}`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token || ''}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError('Error al generar el reporte PDF del historial', res.status);
+  }
+
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = `historial_consultas_zodall_${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
+/**
+ * Descarga el Reporte Completo de Auditoría filtrado en formato PDF (SuperAdmin)
+ */
+export async function downloadFilteredAuditLogsPdf(params?: {
+  search?: string;
+  match_only?: boolean;
+}): Promise<void> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.search) query.append('search', params.search);
+  if (params?.match_only !== undefined) query.append('match_only', String(params.match_only));
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const url = `${BACKEND_URL}/tenants/admin/audit-logs/export-pdf${qs}`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token || ''}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError('Error al generar el reporte PDF', res.status);
+  }
+
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = `reporte_auditoria_zodall_${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
+/**
+ * Descarga el Certificado Oficial de Evidencia SAGRILAFT de un registro individual en PDF
+ */
+export async function downloadIndividualCertificatePdf(logId: string, documentNumber?: string): Promise<void> {
+  const token = getAuthToken();
+  const url = `${BACKEND_URL}/tenants/audit-logs/${logId}/certificate-pdf`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token || ''}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError('Error al generar el certificado PDF', res.status);
+  }
+
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  const docSuffix = documentNumber ? `_${documentNumber}` : '';
+  a.download = `certificado_cumplimiento${docSuffix}_${logId.substring(0, 8)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
