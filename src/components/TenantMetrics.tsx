@@ -28,6 +28,7 @@ export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshM
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTenant(initialTenant);
   }, [initialTenant]);
 

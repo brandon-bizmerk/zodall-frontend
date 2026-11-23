@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   Send,
 } from 'lucide-react';
-import { BACKEND_URL, DEFAULT_API_KEY } from '@/lib/api';
+import { BACKEND_URL } from '@/lib/api';
 
 interface ApiDocsPlaygroundProps {
   apiKey: string;
@@ -22,7 +22,7 @@ export function ApiDocsPlayground({ apiKey }: ApiDocsPlaygroundProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<'curl' | 'js' | 'python'>('curl');
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const activeKey = apiKey || DEFAULT_API_KEY;
+  const activeKey = apiKey.trim() || 'TU_API_KEY';
 
   const codeSnippets = {
     curl: `curl -X POST "${BACKEND_URL}/compliance/verify" \\

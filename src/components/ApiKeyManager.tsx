@@ -29,14 +29,15 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
       setHasApiKey(data.has_api_key);
       setPrefix(data.api_key_prefix);
       if (data.last_generated) setLastGenerated(data.last_generated);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al obtener el estado de la API Key');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al obtener el estado de la API Key');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
   }, []);
 
@@ -50,8 +51,8 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
       setHasApiKey(true);
       setShowRotateConfirm(false);
       onApiKeyGenerated?.(res.api_key_prefix);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al generar la API Key');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al generar la API Key');
     } finally {
       setActionLoading(false);
     }
@@ -234,7 +235,7 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
         </p>
 
         <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto space-y-1">
-          <div className="text-slate-500">// Ejemplo cURL hacia tu servidor en producción:</div>
+          <div className="text-slate-500">{'// Ejemplo cURL hacia tu servidor en producción:'}</div>
           <div>
             curl -X POST {BACKEND_URL}/compliance/verify \
           </div>

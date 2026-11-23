@@ -7,18 +7,18 @@ import {
   GenerateApiKeyResponse,
   TenantMetricsData,
 } from '@/types/auth';
+import { QueryHistoryItem, VerificationResult } from '@/types/compliance';
 
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/v1';
 
 export const AUTH_TOKEN_KEY = 'regtech_jwt_token';
-export const DEFAULT_API_KEY = 'rtk_live_supersecretkey12345';
 
 export class ApiError extends Error {
   statusCode: number;
-  data?: any;
+  data?: unknown;
 
-  constructor(message: string, statusCode: number, data?: any) {
+  constructor(message: string, statusCode: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
@@ -63,7 +63,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
   if (!response.ok) {
     let errorMsg = `Error HTTP ${response.status}: ${response.statusText}`;
-    let errorData: any;
+    let errorData: { message?: string | string[] } | undefined;
     try {
       errorData = await response.json();
       if (errorData?.message) {
@@ -126,15 +126,42 @@ export async function generateApiKeyApi(): Promise<GenerateApiKeyResponse> {
   });
 }
 
+// El backend devuelve price_monthly como string ("19.00"); se normaliza aquí.
 export async function getPlansApi(): Promise<SubscriptionPlan[]> {
-  return apiFetch<SubscriptionPlan[]>('/tenants/plans');
+  const plans = await apiFetch<Array<Omit<SubscriptionPlan, 'price_monthly'> & { price_monthly: number | string }>>(
+    '/tenants/plans'
+  );
+  return plans.map((p) => ({ ...p, price_monthly: Number(p.price_monthly) }));
 }
 
-export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: any }> {
-  return apiFetch<{ message: string; plan: any }>('/tenants/upgrade-plan', {
+export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: unknown }> {
+  return apiFetch<{ message: string; plan: unknown }>('/tenants/upgrade-plan', {
     method: 'POST',
     body: JSON.stringify({ plan_id }),
   });
+}
+
+export async function createCheckoutSessionApi(
+  plan_id: string
+): Promise<{ url: string; sessionId: string }> {
+  return apiFetch<{ url: string; sessionId: string }>('/stripe/create-checkout-session', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id }),
+  });
+}
+
+export async function verifyCheckoutSessionApi(
+  session_id: string
+): Promise<{ success: boolean; plan: string; query_limit: number }> {
+  return apiFetch<{ success: boolean; plan: string; query_limit: number }>(
+    `/stripe/verify-session?session_id=${encodeURIComponent(session_id)}`
+  );
+}
+
+export async function getQueryHistoryApi(
+  limit = 100
+): Promise<{ total: number; limit: number; offset: number; data: QueryHistoryItem[] }> {
+  return apiFetch(`/tenants/query-history?limit=${limit}`);
 }
 
 export async function getTenantMetricsApi(): Promise<TenantMetricsData> {
@@ -145,19 +172,17 @@ export async function getTenantMetricsApi(): Promise<TenantMetricsData> {
 
 export async function checkBackendHealth(): Promise<{ online: boolean; message?: string }> {
   try {
-    const rootUrl = BACKEND_URL.replace(/\/v1\/?$/, '');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const response = await fetch(rootUrl, {
+    const response = await fetch(`${BACKEND_URL}/health`, {
       method: 'GET',
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
     if (response.ok) {
-      const text = await response.text();
-      return { online: true, message: text || 'Online' };
+      return { online: true, message: 'Online' };
     }
     return { online: false, message: `HTTP ${response.status}` };
   } catch (err: unknown) {
@@ -168,14 +193,14 @@ export async function checkBackendHealth(): Promise<{ online: boolean; message?:
 
 export async function verifyCompliance(
   payload: { queried_name: string; queried_document: string; order_reference?: string },
-  apiKey: string = DEFAULT_API_KEY
-): Promise<any> {
+  apiKey: string
+): Promise<VerificationResult> {
   const endpoint = `${BACKEND_URL}/compliance/verify`;
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey.trim() || DEFAULT_API_KEY,
+      'x-api-key': apiKey.trim(),
     },
     body: JSON.stringify(payload),
   });

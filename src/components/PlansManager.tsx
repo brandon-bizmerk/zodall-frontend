@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Check, ArrowUpRight, Zap, Shield, Crown, Building2, Loader2, AlertCircle } from 'lucide-react';
-import { getPlansApi, upgradePlanApi, ApiError } from '@/lib/api';
+import { getPlansApi, upgradePlanApi, createCheckoutSessionApi } from '@/lib/api';
 import { SubscriptionPlan } from '@/types/auth';
 
 interface PlansManagerProps {
@@ -22,7 +22,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
     try {
       const data = await getPlansApi();
       setPlans(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching plans:', err);
     } finally {
       setLoading(false);
@@ -30,6 +30,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlans();
   }, []);
 
@@ -39,18 +40,26 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
     setFeedbackMsg(null);
 
     try {
+      if (selectedPlanForUpgrade.price_monthly > 0) {
+        // Planes de pago: Stripe Checkout hospedado (redirección completa).
+        const { url } = await createCheckoutSessionApi(selectedPlanForUpgrade.id);
+        if (!url) throw new Error('El servidor no devolvió la URL de pago.');
+        window.location.assign(url);
+        return; // se mantiene el estado de carga mientras el navegador navega
+      }
+
       const res = await upgradePlanApi(selectedPlanForUpgrade.id);
       setFeedbackMsg({ text: res.message, type: 'success' });
       setSelectedPlanForUpgrade(null);
       onPlanUpdated();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFeedbackMsg({
-        text: err instanceof ApiError ? err.message : 'Error al procesar el cambio de plan.',
+        text: err instanceof Error ? err.message : 'Error al procesar el cambio de plan.',
         type: 'error',
       });
-    } finally {
-      setActionLoading(false);
+      setSelectedPlanForUpgrade(null);
     }
+    setActionLoading(false);
   };
 
   const getPlanIcon = (id: string) => {
@@ -192,7 +201,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
         })}
       </div>
 
-      {/* MODAL DE CONFIRMACIÓN / SIMULACIÓN DE STRIPE */}
+      {/* MODAL DE CONFIRMACIÓN (Stripe Checkout para planes de pago) */}
       {selectedPlanForUpgrade && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
@@ -217,9 +226,11 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
               </div>
             </div>
 
-            <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
-              💳 <strong>Modo Sandbox / Simulación:</strong> Las claves de Stripe están en proceso de configuración. Este cambio actualizará tu cuota y plan en la base de datos de inmediato.
-            </div>
+            {selectedPlanForUpgrade.price_monthly > 0 && (
+              <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300">
+                Serás redirigido a Stripe para completar el pago de forma segura. Tu plan se actualizará al volver.
+              </div>
+            )}
 
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
@@ -237,7 +248,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
                 className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Confirmar Actualización</span>
+                <span>{selectedPlanForUpgrade.price_monthly > 0 ? 'Continuar al pago' : 'Confirmar Actualización'}</span>
               </button>
             </div>
           </div>

@@ -9,10 +9,11 @@ import {
   RefreshCw,
   LogOut,
   CreditCard,
+  History,
   User,
 } from 'lucide-react';
 
-export type TabType = 'metrics' | 'apikey' | 'plans';
+export type TabType = 'metrics' | 'apikey' | 'plans' | 'history' | 'docs';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -108,6 +109,30 @@ export function Header({
               <CreditCard className="w-3.5 h-3.5" />
               <span>Planes</span>
             </button>
+
+            <button
+              onClick={() => onTabChange('history')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                activeTab === 'history'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Historial</span>
+            </button>
+
+            <button
+              onClick={() => onTabChange('docs')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                activeTab === 'docs'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileCode2 className="w-3.5 h-3.5" />
+              <span>Documentación</span>
+            </button>
           </nav>
 
           {/* Estado del Backend y Usuario */}
@@ -176,6 +201,24 @@ export function Header({
           >
             <CreditCard className="w-4 h-4" />
             <span>Planes</span>
+          </button>
+          <button
+            onClick={() => onTabChange('history')}
+            className={`flex flex-col items-center gap-1 text-[10px] font-semibold ${
+              activeTab === 'history' ? 'text-blue-400' : 'text-slate-400'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Historial</span>
+          </button>
+          <button
+            onClick={() => onTabChange('docs')}
+            className={`flex flex-col items-center gap-1 text-[10px] font-semibold ${
+              activeTab === 'docs' ? 'text-blue-400' : 'text-slate-400'
+            }`}
+          >
+            <FileCode2 className="w-4 h-4" />
+            <span>Docs</span>
           </button>
         </div>
       </div>

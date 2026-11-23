@@ -51,11 +51,11 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         const data = await loginApi(email, password);
         onAuthSuccess(data);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage(err.message || 'Ocurrió un error inesperado al procesar la solicitud.');
+        setErrorMessage((err instanceof Error && err.message) || 'Ocurrió un error inesperado al procesar la solicitud.');
       }
     } finally {
       setLoading(false);
