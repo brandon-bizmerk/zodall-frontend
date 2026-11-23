@@ -366,6 +366,48 @@ export async function downloadClientHistoryPdf(params?: {
   window.URL.revokeObjectURL(downloadUrl);
 }
 
+// ─── Tipos para Event Logs ───────────────────────────────────────────────────
+
+export interface EventLogItem {
+  id: string;
+  type: 'AUTH_EVENT' | 'API_KEY_EVENT' | 'SUBSCRIPTION_EVENT';
+  action: string;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  user_email: string | null;
+  status: 'SUCCESS' | 'ERROR' | 'WARN';
+  ip_address: string | null;
+  error_message: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface EventLogsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  data: EventLogItem[];
+}
+
+/**
+ * SuperAdmin: Obtiene los event logs (logins, API keys, suscripciones)
+ */
+export async function getAdminEventLogsApi(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  type?: string;
+}): Promise<EventLogsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+  if (params?.search) query.append('search', params.search);
+  if (params?.type) query.append('type', params.type);
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return apiFetch<EventLogsResponse>(`/tenants/admin/event-logs${qs}`);
+}
+
 /**
  * Descarga el Reporte Completo de Auditoría filtrado en formato PDF (SuperAdmin)
  */
@@ -402,6 +444,48 @@ export async function downloadFilteredAuditLogsPdf(params?: {
   window.URL.revokeObjectURL(downloadUrl);
 }
 
+// ─── Tipos para Event Logs ───────────────────────────────────────────────────
+
+export interface EventLogItem {
+  id: string;
+  type: 'AUTH_EVENT' | 'API_KEY_EVENT' | 'SUBSCRIPTION_EVENT';
+  action: string;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  user_email: string | null;
+  status: 'SUCCESS' | 'ERROR' | 'WARN';
+  ip_address: string | null;
+  error_message: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface EventLogsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  data: EventLogItem[];
+}
+
+/**
+ * SuperAdmin: Obtiene los event logs (logins, API keys, suscripciones)
+ */
+export async function getAdminEventLogsApi(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  type?: string;
+}): Promise<EventLogsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+  if (params?.search) query.append('search', params.search);
+  if (params?.type) query.append('type', params.type);
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return apiFetch<EventLogsResponse>(`/tenants/admin/event-logs${qs}`);
+}
+
 /**
  * Descarga el Certificado Oficial de Evidencia SAGRILAFT de un registro individual en PDF
  */
@@ -429,4 +513,46 @@ export async function downloadIndividualCertificatePdf(logId: string, documentNu
   a.click();
   a.remove();
   window.URL.revokeObjectURL(downloadUrl);
+}
+
+// ─── Tipos para Event Logs ───────────────────────────────────────────────────
+
+export interface EventLogItem {
+  id: string;
+  type: 'AUTH_EVENT' | 'API_KEY_EVENT' | 'SUBSCRIPTION_EVENT';
+  action: string;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  user_email: string | null;
+  status: 'SUCCESS' | 'ERROR' | 'WARN';
+  ip_address: string | null;
+  error_message: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface EventLogsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  data: EventLogItem[];
+}
+
+/**
+ * SuperAdmin: Obtiene los event logs (logins, API keys, suscripciones)
+ */
+export async function getAdminEventLogsApi(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  type?: string;
+}): Promise<EventLogsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+  if (params?.search) query.append('search', params.search);
+  if (params?.type) query.append('type', params.type);
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return apiFetch<EventLogsResponse>(`/tenants/admin/event-logs${qs}`);
 }
