@@ -7,13 +7,14 @@ import {
   Key,
   CreditCard,
   History,
+  Search,
   LogOut,
   Sun,
   Moon,
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
-export type TabType = 'metrics' | 'history' | 'apikey' | 'plans' | 'admin-plans';
+export type TabType = 'metrics' | 'manual-verification' | 'history' | 'apikey' | 'plans' | 'admin-plans';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -22,6 +23,7 @@ interface HeaderProps {
   userName: string;
   planName: string;
   isSuperAdmin?: boolean;
+  canVerifyManually?: boolean;
   onLogout: () => void;
 }
 
@@ -32,6 +34,7 @@ export function Header({
   userName,
   planName,
   isSuperAdmin = false,
+  canVerifyManually = false,
   onLogout,
 }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
@@ -74,13 +77,13 @@ export function Header({
               {planName || 'FREE'}
             </span>
           </div>
-          <div className="hidden lg:block border-l border-[var(--color-border)] pl-3 text-[11px] text-[var(--color-text-faint)] truncate max-w-[180px]">
+          <div className="hidden 2xl:block border-l border-[var(--color-border)] pl-3 text-[11px] text-[var(--color-text-faint)] truncate max-w-[180px]">
             {companyName}
           </div>
         </div>
 
         {/* Centro: Navegación por pestañas (Desktop) */}
-        <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+        <nav className="hidden xl:flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
           <button
             onClick={() => onTabChange('metrics')}
             className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
@@ -92,6 +95,20 @@ export function Header({
             <BarChart3 className="w-3.5 h-3.5" />
             <span>Dashboard</span>
           </button>
+
+          {canVerifyManually && (
+            <button
+              onClick={() => onTabChange('manual-verification')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                activeTab === 'manual-verification'
+                  ? 'bg-[#5BE1E6] text-[#181919] shadow-sm'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+              }`}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Consultas manuales</span>
+            </button>
+          )}
 
           <button
             onClick={() => onTabChange('history')}
@@ -179,7 +196,7 @@ export function Header({
       </header>
 
       {/* Barra de navegación inferior flotante exclusiva para móviles */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-[var(--color-bg-card)] border-t border-[var(--color-border)] px-2 flex items-center justify-around shadow-2xl backdrop-blur-lg">
+      <nav className="xl:hidden fixed bottom-0 left-0 right-0 z-50 h-16 bg-[var(--color-bg-card)] border-t border-[var(--color-border)] px-1 flex items-center justify-around shadow-2xl backdrop-blur-lg">
         <button
           onClick={() => onTabChange('metrics')}
           className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition ${
@@ -191,6 +208,20 @@ export function Header({
           <BarChart3 className="w-4 h-4" />
           <span className="text-[10px]">Dashboard</span>
         </button>
+
+        {canVerifyManually && (
+          <button
+            onClick={() => onTabChange('manual-verification')}
+            className={`flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl transition ${
+              activeTab === 'manual-verification'
+                ? 'text-[#5BE1E6] font-bold'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+            }`}
+          >
+            <Search className="w-4 h-4" />
+            <span className="text-[10px]">Consultas</span>
+          </button>
+        )}
 
         <button
           onClick={() => onTabChange('history')}

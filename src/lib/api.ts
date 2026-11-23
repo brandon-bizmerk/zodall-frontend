@@ -9,7 +9,7 @@ import {
   AdminUserItem,
   AdminAuditLogsResponse,
 } from '@/types/auth';
-import { QueryHistoryItem } from '@/types/compliance';
+import { QueryHistoryItem, VerificationResult } from '@/types/compliance';
 
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/v1';
@@ -231,6 +231,16 @@ export async function checkBackendHealth(): Promise<{ online: boolean; message?:
     const message = err instanceof Error ? err.message : 'No disponible';
     return { online: false, message };
   }
+}
+
+export async function verifyManualCompliance(payload: {
+  queried_name?: string;
+  queried_document?: string;
+}): Promise<VerificationResult> {
+  return apiFetch<VerificationResult>('/compliance/manual-verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function verifyCompliance(

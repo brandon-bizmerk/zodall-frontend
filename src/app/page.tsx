@@ -8,6 +8,7 @@ import { PlansManager } from '@/components/PlansManager';
 import { AdminPlansDashboard } from '@/components/AdminPlansDashboard';
 import { TenantMetrics } from '@/components/TenantMetrics';
 import { QueryHistory } from '@/components/QueryHistory';
+import { ManualVerification } from '@/components/ManualVerification';
 import { AdminLayout } from '@/components/AdminLayout';
 import { getMeApi, getAuthToken, removeAuthToken, verifyStripeSessionApi, logoutApi } from '@/lib/api';
 import { UserProfile, TenantInfo, AuthResponse } from '@/types/auth';
@@ -145,16 +146,21 @@ export default function Home() {
         userName={user.full_name}
         planName={tenant.plan_name || 'Free'}
         isSuperAdmin={false}
+        canVerifyManually={user.role === 'ADMIN'}
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-[1152px] w-full mx-auto px-3 sm:px-6 lg:px-7 py-5 sm:py-8 pb-20 md:pb-8">
+      <main className="flex-1 max-w-[1152px] w-full mx-auto px-3 sm:px-6 lg:px-7 py-5 sm:py-8 pb-20 xl:pb-8">
         {activeTab === 'metrics' && (
           <TenantMetrics
             tenant={tenant}
             onNavigateTab={setActiveTab}
             onRefreshMetrics={fetchUserProfile}
           />
+        )}
+
+        {activeTab === 'manual-verification' && user.role === 'ADMIN' && (
+          <ManualVerification onQuerySuccess={fetchUserProfile} />
         )}
 
         {activeTab === 'history' && <QueryHistory />}
