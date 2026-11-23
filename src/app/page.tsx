@@ -9,7 +9,7 @@ import { PlansManager } from '@/components/PlansManager';
 import { TenantMetrics } from '@/components/TenantMetrics';
 import { HistoryTab } from '@/components/HistoryTab';
 import { DocsTab } from '@/components/DocsTab';
-import { checkBackendHealth, getMeApi, verifyCheckoutSessionApi, getAuthToken, removeAuthToken } from '@/lib/api';
+import { checkBackendHealth, getMeApi, getAuthToken, removeAuthToken } from '@/lib/api';
 import { UserProfile, TenantInfo, AuthResponse } from '@/types/auth';
 import { Loader2, Check, AlertCircle, X } from 'lucide-react';
 
@@ -60,48 +60,44 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchUserProfile();
-    handleRefreshBackend();
-  }, [fetchUserProfile, handleRefreshBackend]);
-
-  useEffect(() => {
-    if (!user || paymentHandled.current) return;
+    if (!user || !tenant || paymentHandled.current) return;
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
     if (!payment) return;
     paymentHandled.current = true; // evita la doble ejecución de React Strict Mode
-    const sessionId = params.get('session_id');
-    router.replace('/'); // limpia la query: recargar no repite la verificación
+    const targetPlan = params.get('plan');
+    const basePlan = tenant.plan_id;
+    router.replace('/'); // limpia la query: recargar no repite el sondeo
 
-    if (payment !== 'success' || !sessionId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveTab('plans');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveTab('plans');
+    if (payment !== 'success') {
       setPaymentNotice({ text: 'El pago fue cancelado. Tu plan no cambió.', type: 'info' });
       return;
     }
 
-    verifyCheckoutSessionApi(sessionId)
-      .then((res) => {
-        setActiveTab('plans');
-        if (res.success) {
-          setPaymentNotice({
-            text: `Pago confirmado. Tu plan ahora es ${res.plan} (${res.query_limit.toLocaleString()} consultas/mes).`,
-            type: 'success',
-          });
-        } else {
-          setPaymentNotice({ text: 'No se pudo confirmar el pago. Si te cobraron, contacta a soporte.', type: 'error' });
+    // El plan lo activa el webhook de Stripe: se sondea el perfil (cada 2 s, máx. 20 s).
+    setPaymentNotice({ text: 'Procesando tu pago…', type: 'info' });
+    const isActivated = (planId: string) => (targetPlan ? planId === targetPlan : planId !== basePlan);
+    const poll = async () => {
+      for (let i = 0; i < 10; i++) {
+        try {
+          const me = await getMeApi();
+          if (isActivated(me.tenant.plan_id)) {
+            setUser(me.user);
+            setTenant(me.tenant);
+            setPaymentNotice({ text: `Pago confirmado. Tu plan ahora es ${me.tenant.plan_name}.`, type: 'success' });
+            return;
+          }
+        } catch {
+          // reintenta en el siguiente ciclo
         }
-        return fetchUserProfile();
-      })
-      .catch((err: unknown) => {
-        setActiveTab('plans');
-        setPaymentNotice({
-          text: err instanceof Error ? err.message : 'Error al verificar el pago.',
-          type: 'error',
-        });
-      });
-  }, [user, router, fetchUserProfile]);
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      setPaymentNotice({ text: 'El pago se está confirmando; recarga en unos minutos.', type: 'info' });
+    };
+    poll();
+  }, [user, tenant, router]);
 
   const handleAuthSuccess = (authData: AuthResponse) => {
     setUser(authData.user);

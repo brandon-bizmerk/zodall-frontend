@@ -150,14 +150,6 @@ export async function createCheckoutSessionApi(
   });
 }
 
-export async function verifyCheckoutSessionApi(
-  session_id: string
-): Promise<{ success: boolean; plan: string; query_limit: number }> {
-  return apiFetch<{ success: boolean; plan: string; query_limit: number }>(
-    `/stripe/verify-session?session_id=${encodeURIComponent(session_id)}`
-  );
-}
-
 export async function getQueryHistoryApi(
   limit = 100
 ): Promise<{ total: number; limit: number; offset: number; data: QueryHistoryItem[] }> {
