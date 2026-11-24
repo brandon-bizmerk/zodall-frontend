@@ -29,6 +29,7 @@ export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshM
   const isDark = theme === 'dark';
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTenant(initialTenant);
   }, [initialTenant]);
 

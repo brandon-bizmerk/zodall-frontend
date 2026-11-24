@@ -57,7 +57,7 @@ export function AdminProfileManager({
 
     setSaving(true);
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         full_name: fullName.trim(),
         email: email.trim(),
       };
@@ -73,8 +73,8 @@ export function AdminProfileManager({
       setNewPassword('');
       setConfirmPassword('');
       setMessage({ type: 'success', text: 'Perfil y credenciales actualizados exitosamente.' });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Error al actualizar el perfil.' });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: (err instanceof Error ? err.message : undefined) || 'Error al actualizar el perfil.' });
     } finally {
       setSaving(false);
     }

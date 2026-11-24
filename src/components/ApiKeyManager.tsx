@@ -33,14 +33,15 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
       setHasApiKey(data.has_api_key);
       setPrefix(data.api_key_prefix);
       if (data.last_generated) setLastGenerated(data.last_generated);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al obtener el estado de la API Key');
+    } catch (err: unknown) {
+      setErrorMsg((err instanceof Error ? err.message : undefined) || 'Error al obtener el estado de la API Key');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
   }, []);
 
@@ -54,8 +55,8 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
       setHasApiKey(true);
       setShowRotateConfirm(false);
       onApiKeyGenerated?.(res.api_key_prefix);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al generar la API Key');
+    } catch (err: unknown) {
+      setErrorMsg((err instanceof Error ? err.message : undefined) || 'Error al generar la API Key');
     } finally {
       setActionLoading(false);
     }
@@ -276,10 +277,10 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
         </p>
 
         <pre className="m-0 border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4 font-mono text-xs leading-relaxed text-[var(--color-text-main)] overflow-x-auto">
-          <span className="text-[var(--color-text-faint)]">// Ejemplo cURL hacia el endpoint oficial de producción:</span>
+          <span className="text-[var(--color-text-faint)]">{'// Ejemplo cURL hacia el endpoint oficial de producción:'}</span>
           {'\n'}curl -X POST https://api.zodall.app/api/v1/compliance/verify \{'\n'}
-          {'  '}<span className="text-[#5BE1E6]">-H "Content-Type: application/json"</span> \{'\n'}
-          {'  '}<span className="text-[#10d98a]">-H "x-api-key: {prefix || 'rtk_live_...'}"</span> \{'\n'}
+          {'  '}<span className="text-[#5BE1E6]">-H &quot;Content-Type: application/json&quot;</span> \{'\n'}
+          {'  '}<span className="text-[#10d98a]">-H &quot;x-api-key: {prefix || 'rtk_live_...'}&quot;</span> \{'\n'}
           {'  '}<span className="text-[#f5b50a]">-d &apos;{"{"}&quot;queried_name&quot;:&quot;Nicolas Maduro&quot;,&quot;queried_document&quot;:&quot;123456789&quot;{"}"}&apos;</span>
         </pre>
       </section>

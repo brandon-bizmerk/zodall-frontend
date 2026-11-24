@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_BACKEND_URL: https://api.zodall.app/api/v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Guardia de plataforma
+        run: |
+          node -e "
+          const pkg = require('./package.json');
+          const bad = /win32|darwin|linux-x64|linux-arm|-msvc|-gnu|-musl|binding-|@esbuild\/|@rollup\/rollup-|@next\/swc-/;
+          const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+          const found = Object.keys(deps).filter((n) => bad.test(n));
+          if (found.length) { console.error('Paquetes atados a plataforma:', found.join(', ')); process.exit(1); }
+          console.log('Sin paquetes atados a plataforma.');
+          "
+
+      - run: yarn install --frozen-lockfile
+
+      - run: yarn lint
+
+      - run: yarn tsc --noEmit
+
+      - run: yarn build
+
+      - name: Build sin secretos ni localhost
+        run: |
+          if grep -rIl --include='*.js' --include='*.html' --include='*.json' -e 'supersecretkey' -e 'localhost:3001' .next/static .next/server 2>/dev/null; then
+            echo "El build contiene supersecretkey o localhost:3001" >&2
+            exit 1
+          fi
+          echo "Build limpio."

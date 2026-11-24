@@ -18,8 +18,8 @@ import { QueryHistoryItem } from '@/types/compliance';
 
 interface AuditHistoryProps {
   history: QueryHistoryItem[];
-  onClearHistory: () => void;
-  onSelectQuery: (item: QueryHistoryItem) => void;
+  onClearHistory?: () => void;
+  onSelectQuery?: (item: QueryHistoryItem) => void;
 }
 
 export function AuditHistory({ history, onClearHistory, onSelectQuery }: AuditHistoryProps) {
@@ -114,7 +114,7 @@ export function AuditHistory({ history, onClearHistory, onSelectQuery }: AuditHi
             <Download className="w-3.5 h-3.5 text-indigo-400" />
             Exportar JSON
           </button>
-          {history.length > 0 && (
+          {history.length > 0 && onClearHistory && (
             <button
               onClick={onClearHistory}
               className="p-1.5 rounded-xl border border-rose-500/20 text-rose-400 hover:bg-rose-500/10 transition"
@@ -204,7 +204,7 @@ export function AuditHistory({ history, onClearHistory, onSelectQuery }: AuditHi
                   <tr
                     key={item.id}
                     className="hover:bg-slate-800/40 transition cursor-pointer"
-                    onClick={() => onSelectQuery(item)}
+                    onClick={() => onSelectQuery?.(item)}
                   >
                     <td className="py-3 px-4 whitespace-nowrap">
                       {item.match_found ? (
@@ -270,7 +270,7 @@ export function AuditHistory({ history, onClearHistory, onSelectQuery }: AuditHi
                     </td>
 
                     <td className="py-3 px-4 text-right text-slate-500 text-[11px] whitespace-nowrap font-mono">
-                      {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      {new Date(item.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })}
                     </td>
                   </tr>
                 ))}
