@@ -14,7 +14,15 @@ import { QueryHistoryItem, VerificationResult, ProofVerificationResult } from '@
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/v1';
 
-export const AUTH_TOKEN_KEY = 'regtech_jwt_token';
+/** Clave que usaban versiones anteriores para guardar el JWT en localStorage (solo para limpiarla). */
+const LEGACY_TOKEN_KEY = 'regtech_jwt_token';
+
+/** Prefijo del BFF de Next.js: el navegador nunca habla con NestJS con el JWT. */
+const BFF_PREFIX = '/api/bff';
+const CSRF_COOKIE = 'zodall_csrf';
+
+/** Evento que se emite cuando la API responde 401 (sesión vencida o revocada). */
+export const SESSION_EXPIRED_EVENT = 'zodall:session-expired';
 
 export class ApiError extends Error {
   statusCode: number;
@@ -30,78 +38,92 @@ export class ApiError extends Error {
 
 // â”€â”€â”€ Token Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
-
-export function setAuthToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
+/** Borra el JWT que dejaron versiones anteriores en localStorage (migración suave). */
+export function clearLegacyToken(): void {
+  try {
+    if (typeof window !== 'undefined') localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    // almacenamiento no disponible
   }
 }
 
-export function removeAuthToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  }
+function getCsrfToken(): string {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.split('; ').find((c) => c.startsWith(CSRF_COOKIE + '='));
+  return match ? decodeURIComponent(match.slice(CSRF_COOKIE.length + 1)) : '';
 }
 
 // â”€â”€â”€ Generic Fetch Helper with Error Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+async function parseError(response: Response): Promise<ApiError> {
+  let errorMsg = `Error HTTP ${response.status}: ${response.statusText}`;
+  let errorData: { message?: string | string[] } | undefined;
+  try {
+    errorData = await response.json();
+    if (errorData?.message) {
+      errorMsg = Array.isArray(errorData.message) ? errorData.message.join(', ') : errorData.message;
+    }
+  } catch {
+    // No JSON body
   }
+  return new ApiError(errorMsg, response.status, errorData);
+}
 
-  const url = `${BACKEND_URL}${endpoint}`;
-  const response = await fetch(url, { ...options, headers });
+/** Petición autenticada al BFF: la cookie HttpOnly viaja sola; las mutaciones añaden el token CSRF. */
+async function bffRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
+  if (options.body) headers['Content-Type'] = 'application/json';
+  if (method !== 'GET') headers['x-csrf-token'] = getCsrfToken();
+
+  const response = await fetch(`${BFF_PREFIX}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
 
   if (!response.ok) {
-    if (response.status === 401 && token) {
-      // Token expirado o revocado: limpiar sesiÃ³n para redirigir al login
-      removeAuthToken();
+    if (response.status === 401 && typeof window !== 'undefined') {
+      // Sesión vencida o revocada: el BFF ya borró las cookies; la UI vuelve al login.
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
-
-    let errorMsg = `Error HTTP ${response.status}: ${response.statusText}`;
-    let errorData: { message?: string | string[] } | undefined;
-    try {
-      errorData = await response.json();
-      if (errorData?.message) {
-        errorMsg = Array.isArray(errorData.message)
-          ? errorData.message.join(', ')
-          : errorData.message;
-      }
-    } catch {
-      // No JSON body
-    }
-    throw new ApiError(errorMsg, response.status, errorData);
+    throw await parseError(response);
   }
+  return response;
+}
 
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  return (await bffRequest(endpoint, options)).json();
+}
+
+/** Login y registro: los atiende el BFF, que fija la cookie de sesión; no devuelven el JWT. */
+async function authRequest(kind: 'login' | 'register', body: unknown): Promise<AuthResponse> {
+  const response = await fetch(`/api/auth/${kind}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  if (!response.ok) throw await parseError(response);
   return response.json();
 }
 
 // â”€â”€â”€ Auth API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function loginApi(email: string, password: string, recaptchaToken?: string): Promise<AuthResponse> {
-  const data = await apiFetch<AuthResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password, ...(recaptchaToken ? { recaptcha_token: recaptchaToken } : {}) }),
-  });
-  if (data.access_token) {
-    setAuthToken(data.access_token);
-  }
-  return data;
+  return authRequest('login', { email, password, ...(recaptchaToken ? { recaptcha_token: recaptchaToken } : {}) });
 }
 
+/** Cierra la sesión: el BFF borra la cookie aunque la API no responda. */
 export async function logoutApi(): Promise<void> {
-  await apiFetch('/auth/logout', { method: 'POST', signal: AbortSignal.timeout(5000) });
+  await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    signal: AbortSignal.timeout(8000),
+  });
 }
 
 export async function registerApi(payload: {
@@ -112,14 +134,7 @@ export async function registerApi(payload: {
   country?: string;
   recaptcha_token?: string;
 }): Promise<AuthResponse> {
-  const data = await apiFetch<AuthResponse>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (data.access_token) {
-    setAuthToken(data.access_token);
-  }
-  return data;
+  return authRequest('register', payload);
 }
 
 export async function getMeApi(): Promise<{ user: UserProfile; tenant: TenantInfo }> {
@@ -353,22 +368,18 @@ export async function downloadClientHistoryPdf(params?: {
   search?: string;
   match_only?: boolean;
 }): Promise<void> {
-  const token = getAuthToken();
   const query = new URLSearchParams();
   if (params?.search) query.append('search', params.search);
   if (params?.match_only !== undefined) query.append('match_only', String(params.match_only));
 
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const url = `${BACKEND_URL}/tenants/query-history/export-pdf${qs}`;
+  const endpoint = `/tenants/query-history/export-pdf${qs}`;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token || ''}`,
-    },
-  });
-
-  if (!res.ok) {
-    throw new ApiError('Error al generar el reporte PDF del historial', res.status);
+  let res: Response;
+  try {
+    res = await bffRequest(endpoint);
+  } catch (err) {
+    throw err instanceof ApiError ? new ApiError('Error al generar el reporte PDF del historial', err.statusCode) : err;
   }
 
   const blob = await res.blob();
@@ -432,22 +443,18 @@ export async function downloadFilteredAuditLogsPdf(params?: {
   search?: string;
   match_only?: boolean;
 }): Promise<void> {
-  const token = getAuthToken();
   const query = new URLSearchParams();
   if (params?.search) query.append('search', params.search);
   if (params?.match_only !== undefined) query.append('match_only', String(params.match_only));
 
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const url = `${BACKEND_URL}/tenants/admin/audit-logs/export-pdf${qs}`;
+  const endpoint = `/tenants/admin/audit-logs/export-pdf${qs}`;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token || ''}`,
-    },
-  });
-
-  if (!res.ok) {
-    throw new ApiError('Error al generar el reporte PDF', res.status);
+  let res: Response;
+  try {
+    res = await bffRequest(endpoint);
+  } catch (err) {
+    throw err instanceof ApiError ? new ApiError('Error al generar el reporte PDF', err.statusCode) : err;
   }
 
   const blob = await res.blob();
@@ -466,17 +473,13 @@ export async function downloadFilteredAuditLogsPdf(params?: {
  * Descarga el Certificado Oficial de Evidencia SAGRILAFT de un registro individual en PDF
  */
 export async function downloadIndividualCertificatePdf(logId: string, documentNumber?: string): Promise<void> {
-  const token = getAuthToken();
-  const url = `${BACKEND_URL}/tenants/audit-logs/${logId}/certificate-pdf`;
+  const endpoint = `/tenants/audit-logs/${encodeURIComponent(logId)}/certificate-pdf`;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token || ''}`,
-    },
-  });
-
-  if (!res.ok) {
-    throw new ApiError('Error al generar el certificado PDF', res.status);
+  let res: Response;
+  try {
+    res = await bffRequest(endpoint);
+  } catch (err) {
+    throw err instanceof ApiError ? new ApiError('Error al generar el certificado PDF', err.statusCode) : err;
   }
 
   const blob = await res.blob();

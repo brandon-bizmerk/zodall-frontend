@@ -10,7 +10,7 @@ import { TenantMetrics } from '@/components/TenantMetrics';
 import { QueryHistory } from '@/components/QueryHistory';
 import { ManualVerification } from '@/components/ManualVerification';
 import { AdminLayout } from '@/components/AdminLayout';
-import { getMeApi, getAuthToken, removeAuthToken, logoutApi } from '@/lib/api';
+import { getMeApi, logoutApi, clearLegacyToken, SESSION_EXPIRED_EVENT } from '@/lib/api';
 import { UserProfile, TenantInfo, AuthResponse } from '@/types/auth';
 import { Loader2 } from 'lucide-react';
 
@@ -24,20 +24,11 @@ export default function Home() {
 
   // Cargar perfil del usuario autenticado
   const fetchUserProfile = useCallback(async () => {
-    const token = getAuthToken();
-    if (!token) {
-      setLoadingAuth(false);
-      setUser(null);
-      setTenant(null);
-      return;
-    }
-
     try {
       const data = await getMeApi();
       setUser(data.user);
       setTenant(data.tenant);
     } catch {
-      removeAuthToken();
       setUser(null);
       setTenant(null);
     } finally {
@@ -46,6 +37,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Migración: versiones anteriores guardaban el JWT en localStorage; la sesión ahora es una cookie HttpOnly.
+    clearLegacyToken();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUserProfile();
 
@@ -78,6 +71,16 @@ export default function Home() {
     }
   }, [fetchUserProfile]);
 
+  // Una respuesta 401 de la API (sesión vencida o revocada) devuelve al login.
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setTenant(null);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, []);
+
   const handleAuthSuccess = (authData: AuthResponse) => {
     setUser(authData.user);
     if (authData.user.role === 'SUPERADMIN') {
@@ -94,7 +97,6 @@ export default function Home() {
     } catch (error) {
       console.error('Error registrando el cierre de sesión:', error);
     } finally {
-      removeAuthToken();
       setUser(null);
       setTenant(null);
     }
