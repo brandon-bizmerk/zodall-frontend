@@ -9,19 +9,18 @@ import {
   AdminUserItem,
   AdminAuditLogsResponse,
 } from '@/types/auth';
-import { QueryHistoryItem } from '@/types/compliance';
+import { QueryHistoryItem, VerificationResult, ProofVerificationResult } from '@/types/compliance';
 
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/v1';
 
 export const AUTH_TOKEN_KEY = 'regtech_jwt_token';
-export const DEFAULT_API_KEY = 'rtk_live_supersecretkey12345';
 
 export class ApiError extends Error {
   statusCode: number;
-  data?: any;
+  data?: unknown;
 
-  constructor(message: string, statusCode: number, data?: any) {
+  constructor(message: string, statusCode: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
@@ -29,7 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-// ─── Token Management ────────────────────────────────────────────────────────
+// â”€â”€â”€ Token Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -48,7 +47,7 @@ export function removeAuthToken(): void {
   }
 }
 
-// ─── Generic Fetch Helper with Error Parsing ─────────────────────────────────
+// â”€â”€â”€ Generic Fetch Helper with Error Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
@@ -66,12 +65,12 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
   if (!response.ok) {
     if (response.status === 401 && token) {
-      // Token expirado o revocado: limpiar sesión para redirigir al login
+      // Token expirado o revocado: limpiar sesiÃ³n para redirigir al login
       removeAuthToken();
     }
 
     let errorMsg = `Error HTTP ${response.status}: ${response.statusText}`;
-    let errorData: any;
+    let errorData: { message?: string | string[] } | undefined;
     try {
       errorData = await response.json();
       if (errorData?.message) {
@@ -88,17 +87,21 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json();
 }
 
-// ─── Auth API ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Auth API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function loginApi(email: string, password: string): Promise<AuthResponse> {
+export async function loginApi(email: string, password: string, recaptchaToken?: string): Promise<AuthResponse> {
   const data = await apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...(recaptchaToken ? { recaptcha_token: recaptchaToken } : {}) }),
   });
   if (data.access_token) {
     setAuthToken(data.access_token);
   }
   return data;
+}
+
+export async function logoutApi(): Promise<void> {
+  await apiFetch('/auth/logout', { method: 'POST', signal: AbortSignal.timeout(5000) });
 }
 
 export async function registerApi(payload: {
@@ -107,6 +110,7 @@ export async function registerApi(payload: {
   email: string;
   password: string;
   country?: string;
+  recaptcha_token?: string;
 }): Promise<AuthResponse> {
   const data = await apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
@@ -122,7 +126,7 @@ export async function getMeApi(): Promise<{ user: UserProfile; tenant: TenantInf
   return apiFetch<{ user: UserProfile; tenant: TenantInfo }>('/auth/me');
 }
 
-// ─── Tenants & API Key Management ────────────────────────────────────────────
+// â”€â”€â”€ Tenants & API Key Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getApiKeyStatusApi(): Promise<ApiKeyStatusResponse> {
   return apiFetch<ApiKeyStatusResponse>('/tenants/api-key');
@@ -139,8 +143,8 @@ export async function getPlansApi(): Promise<SubscriptionPlan[]> {
 }
 
 /**
- * Panel SuperAdmin: Actualiza el nombre, precio, límite y características de un plan
- * sincronizando automáticamente en Stripe.
+ * Panel SuperAdmin: Actualiza el nombre, precio, lÃ­mite y caracterÃ­sticas de un plan
+ * sincronizando automÃ¡ticamente en Stripe.
  */
 export async function updatePlanAdminApi(
   planId: string,
@@ -165,12 +169,9 @@ export async function createStripeCheckoutSessionApi(plan_id: string): Promise<{
   });
 }
 
-export async function verifyStripeSessionApi(session_id: string): Promise<{ success: boolean; plan: string; query_limit: number }> {
-  return apiFetch<{ success: boolean; plan: string; query_limit: number }>(`/stripe/verify-session?session_id=${encodeURIComponent(session_id)}`);
-}
 
-export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: any }> {
-  return apiFetch<{ message: string; plan: any }>('/tenants/upgrade-plan', {
+export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: unknown }> {
+  return apiFetch<{ message: string; plan: unknown }>('/tenants/upgrade-plan', {
     method: 'POST',
     body: JSON.stringify({ plan_id }),
   });
@@ -204,7 +205,7 @@ export async function getQueryHistoryApi(params?: {
   );
 }
 
-// ─── Health Check ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Health Check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function checkBackendHealth(): Promise<{ online: boolean; message?: string }> {
   try {
@@ -229,14 +230,24 @@ export async function checkBackendHealth(): Promise<{ online: boolean; message?:
   }
 }
 
+export async function verifyManualCompliance(payload: {
+  queried_name?: string;
+  queried_document?: string;
+}): Promise<VerificationResult> {
+  return apiFetch<VerificationResult>('/compliance/manual-verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function verifyCompliance(
   payload: { queried_name: string; queried_document: string; order_reference?: string; strict_mode?: boolean },
   apiKey?: string
-): Promise<any> {
+): Promise<VerificationResult> {
   const cleanKey = (apiKey || '').trim();
   if (!cleanKey) {
     throw new ApiError(
-      'No se encontró una API Key válida configurada. Por favor genera o copia tu clave en el módulo de API Keys.',
+      'No se encontrÃ³ una API Key vÃ¡lida configurada. Por favor genera o copia tu clave en el mÃ³dulo de API Keys.',
       401
     );
   }
@@ -260,9 +271,9 @@ export async function verifyCompliance(
 }
 
 /**
- * Consulta de verificación de evidencia SAGRILAFT pública (Punto 9)
+ * Consulta de verificaciÃ³n de evidencia SAGRILAFT pÃºblica (Punto 9)
  */
-export async function verifyProofApi(hash: string): Promise<any> {
+export async function verifyProofApi(hash: string): Promise<ProofVerificationResult> {
   const cleanHash = (hash || '').trim();
   const endpoint = `${BACKEND_URL}/compliance/verify-proof/${cleanHash}`;
   const res = await fetch(endpoint, {
@@ -290,14 +301,14 @@ export async function getAdminUsersApi(): Promise<AdminUserItem[]> {
 /**
  * SuperAdmin: Activar o desactivar cuenta de usuario cliente
  */
-export async function toggleAdminUserStatusApi(userId: string): Promise<any> {
-  return apiFetch<any>(`/tenants/admin/users/${userId}/toggle-status`, {
+export async function toggleAdminUserStatusApi(userId: string): Promise<{ account_status: string }> {
+  return apiFetch<{ account_status: string }>(`/tenants/admin/users/${userId}/toggle-status`, {
     method: 'PUT',
   });
 }
 
 /**
- * SuperAdmin: Obtener auditoría global de logs
+ * SuperAdmin: Obtener auditorÃ­a global de logs
  */
 export async function getAdminAuditLogsApi(params?: {
   limit?: number;
@@ -316,15 +327,15 @@ export async function getAdminAuditLogsApi(params?: {
 }
 
 /**
- * Actualizar perfil y/o contraseña del usuario autenticado
+ * Actualizar perfil y/o contraseÃ±a del usuario autenticado
  */
 export async function updateProfileApi(data: {
   full_name?: string;
   email?: string;
   current_password?: string;
   new_password?: string;
-}): Promise<any> {
-  return apiFetch<any>('/auth/profile', {
+}): Promise<{ user: UserProfile }> {
+  return apiFetch<{ user: UserProfile }>('/auth/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -366,8 +377,51 @@ export async function downloadClientHistoryPdf(params?: {
   window.URL.revokeObjectURL(downloadUrl);
 }
 
+// â”€â”€â”€ Tipos para Event Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export interface EventLogItem {
+  id: string;
+  type: 'AUTH_EVENT' | 'API_KEY_EVENT' | 'SUBSCRIPTION_EVENT';
+  action: string;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  user_email: string | null;
+  status: 'SUCCESS' | 'ERROR' | 'WARN';
+  ip_address: string | null;
+  error_message: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface EventLogsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  data: EventLogItem[];
+}
+
 /**
- * Descarga el Reporte Completo de Auditoría filtrado en formato PDF (SuperAdmin)
+ * SuperAdmin: Obtiene los event logs (logins, API keys, suscripciones)
+ */
+export async function getAdminEventLogsApi(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  type?: string;
+}): Promise<EventLogsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.append('limit', String(params.limit));
+  if (params?.offset) query.append('offset', String(params.offset));
+  if (params?.search) query.append('search', params.search);
+  if (params?.type) query.append('type', params.type);
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return apiFetch<EventLogsResponse>(`/tenants/admin/event-logs${qs}`);
+}
+
+/**
+ * Descarga el Reporte Completo de AuditorÃ­a filtrado en formato PDF (SuperAdmin)
  */
 export async function downloadFilteredAuditLogsPdf(params?: {
   search?: string;
@@ -401,6 +455,7 @@ export async function downloadFilteredAuditLogsPdf(params?: {
   a.remove();
   window.URL.revokeObjectURL(downloadUrl);
 }
+
 
 /**
  * Descarga el Certificado Oficial de Evidencia SAGRILAFT de un registro individual en PDF

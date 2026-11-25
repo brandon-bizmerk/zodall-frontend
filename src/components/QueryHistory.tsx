@@ -126,6 +126,7 @@ export function QueryHistory() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs();
   }, [dateFrom, dateTo, sortOrder, statusFilter]);
 
@@ -151,8 +152,8 @@ export function QueryHistory() {
         search: searchTerm.trim() || undefined,
         match_only: statusFilter === 'match',
       });
-    } catch (err: any) {
-      alert(err.message || 'Error al exportar reporte PDF del historial.');
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : undefined) || 'Error al exportar reporte PDF del historial.');
     } finally {
       setExportingPdf(false);
     }
@@ -162,8 +163,8 @@ export function QueryHistory() {
     setDownloadingCertId(item.id);
     try {
       await downloadIndividualCertificatePdf(item.id, item.queried_document);
-    } catch (err: any) {
-      alert(err.message || 'Error al descargar certificado PDF.');
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : undefined) || 'Error al descargar certificado PDF.');
     } finally {
       setDownloadingCertId(null);
     }
@@ -194,6 +195,7 @@ export function QueryHistory() {
 
   // Resetear a página 1 si cambian los filtros
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [searchTerm, statusFilter, dateFrom, dateTo, sortOrder, pageSize]);
 

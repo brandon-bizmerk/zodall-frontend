@@ -19,6 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem('zodall_theme') as Theme | null;
     if (saved === 'light' || saved === 'dark') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(saved);
       document.documentElement.classList.remove('dark', 'light');
       document.documentElement.classList.add(saved);

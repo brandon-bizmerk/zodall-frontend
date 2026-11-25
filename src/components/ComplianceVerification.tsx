@@ -17,7 +17,7 @@ import {
   ArrowRight,
   ExternalLink,
 } from 'lucide-react';
-import { verifyCompliance, ApiError, DEFAULT_API_KEY } from '@/lib/api';
+import { verifyCompliance, ApiError, BACKEND_URL } from '@/lib/api';
 import { VerificationResult, QueryHistoryItem } from '@/types/compliance';
 
 interface ComplianceVerificationProps {
@@ -81,6 +81,11 @@ export function ComplianceVerification({
       return;
     }
 
+    if (!apiKey.trim()) {
+      setError('Pega tu API key para ejecutar una verificación de prueba.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -92,7 +97,7 @@ export function ComplianceVerification({
           queried_document: queriedDocument,
           order_reference: orderReference || undefined,
         },
-        apiKey || DEFAULT_API_KEY
+        apiKey
       );
 
       setResult(data);
@@ -485,7 +490,7 @@ export function ComplianceVerification({
                       )}
                     </button>
                     <a
-                      href={`http://localhost:3001/api/v1/compliance/verify-proof/${result.integrity_proof_hash}`}
+                      href={`${BACKEND_URL}/compliance/verify-proof/${result.integrity_proof_hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition font-semibold"

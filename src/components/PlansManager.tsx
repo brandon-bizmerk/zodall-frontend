@@ -85,7 +85,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
     try {
       const data = await getPlansApi();
       setPlans(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching plans:', err);
     } finally {
       setLoading(false);
@@ -93,6 +93,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlans();
   }, []);
 
@@ -105,10 +106,10 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
       if (Number(plan.price_monthly) > 0) {
         setFeedbackMsg({ text: 'Iniciando pasarela de pago segura con Stripe...', type: 'success' });
         const { url } = await createStripeCheckoutSessionApi(plan.id);
-        if (url) {
-          window.location.href = url;
-          return;
-        }
+        if (!url) throw new Error('El servidor no devolvió la URL de pago.');
+        // eslint-disable-next-line react-hooks/immutability
+        window.location.href = url;
+        return;
       }
 
       // Si es plan Free
@@ -116,7 +117,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
       setFeedbackMsg({ text: res.message, type: 'success' });
       setSelectedPlanForUpgrade(null);
       onPlanUpdated();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFeedbackMsg({
         text: err instanceof ApiError ? err.message : 'Error al procesar el cambio de plan.',
         type: 'error',
