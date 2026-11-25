@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Script from 'next/script';
 import { Shield, Lock, Mail, Building, User, Globe, ArrowRight, Loader2, Sun, Moon } from 'lucide-react';
@@ -20,6 +20,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
+
+  // El badge de reCAPTCHA solo se muestra mientras esta pantalla está montada (ver globals.css)
+  useEffect(() => {
+    document.body.classList.add('auth-screen-active');
+    return () => document.body.classList.remove('auth-screen-active');
+  }, []);
 
   // Form states
   const [email, setEmail] = useState('');
@@ -277,6 +283,27 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   </>
                 )}
               </button>
+              <p className="mt-3 text-center text-[10px] leading-relaxed text-[var(--color-text-faint)]">
+                Este sitio está protegido por reCAPTCHA y se aplican la{' '}
+                <a
+                  href="https://policies.google.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-[var(--color-text-muted)] transition"
+                >
+                  Política de privacidad
+                </a>{' '}
+                y los{' '}
+                <a
+                  href="https://policies.google.com/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-[var(--color-text-muted)] transition"
+                >
+                  Términos del servicio
+                </a>{' '}
+                de Google.
+              </p>
             </div>
           </form>
         </div>
