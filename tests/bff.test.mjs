@@ -280,6 +280,45 @@ test('proxy: sin URL de API en producción devuelve 500 y nunca usa un host del 
   assert.equal(calls.length, 0);
 });
 
+test('PUT auth/profile con access_token nuevo: cuerpo sin token y cookie de sesión rotada', async () => {
+  const NEW = `${b64({ alg: 'HS256' })}.${b64({ sub: 'u1', tv: 2, exp: NOW / 1000 + 600 })}.nueva`;
+  const { deps } = mkDeps(() => jsonRes(200, { user: { id: 'u1' }, access_token: NEW }));
+  const res = await handleProxy(req('/api/bff/auth/profile', { method: 'PUT', headers: mutating(), body: '{"new_password":"x"}' }), deps);
+  assert.equal(res.status, 200);
+  const text = await res.text();
+  assert.ok(!text.includes('access_token') && !text.includes(NEW));
+  assert.deepEqual(JSON.parse(text), { user: { id: 'u1' } });
+  const [sess, csrf] = setCookies(res);
+  assert.ok(sess.startsWith(`${SESSION_COOKIE}=${NEW}`));
+  for (const attr of ['HttpOnly', 'Secure', 'SameSite=Lax', 'Path=/', 'Max-Age=600']) assert.ok(sess.includes(attr), attr);
+  assert.ok(csrf.startsWith(`${CSRF_COOKIE}=`) && !csrf.includes('HttpOnly'));
+});
+
+test('PUT auth/profile sin access_token: sin Set-Cookie y cuerpo intacto', async () => {
+  const { deps } = mkDeps(() => jsonRes(200, { user: { id: 'u1' } }));
+  const res = await handleProxy(req('/api/bff/auth/profile', { method: 'PUT', headers: mutating(), body: '{"full_name":"A"}' }), deps);
+  assert.equal(setCookies(res).length, 0);
+  assert.deepEqual(await res.json(), { user: { id: 'u1' } });
+});
+
+test('ninguna otra ruta filtra access_token ni rota la sesión (aunque la API lo incluya)', async () => {
+  const { deps } = mkDeps(() => jsonRes(200, { ok: true, access_token: 'secreto-no-debe-salir' }));
+  for (const [method, path] of [['GET', '/api/bff/auth/me'], ['GET', '/api/bff/tenants/plans'], ['POST', '/api/bff/tenants/api-key/generate']]) {
+    const headers = method === 'GET' ? session : mutating();
+    const res = await handleProxy(req(path, { method, headers }), deps);
+    const text = await res.text();
+    assert.ok(!text.includes('access_token') && !text.includes('secreto-no-debe-salir'), path);
+    assert.equal(setCookies(res).length, 0, path);
+  }
+});
+
+test('respuestas no JSON (PDF) siguen en streaming sin tocarse', async () => {
+  const bytes = new Uint8Array([37, 80, 68, 70, 0, 255]);
+  const { deps } = mkDeps(() => new Response(bytes, { status: 200, headers: { 'content-type': 'application/pdf' } }));
+  const res = await handleProxy(req('/api/bff/tenants/query-history/export-pdf', { headers: session }), deps);
+  assert.deepEqual(new Uint8Array(await res.arrayBuffer()), bytes);
+});
+
 // ─── Logout ─────────────────────────────────────────────────────────────────
 
 test('logout: borra las cookies aunque NestJS esté caído', async () => {

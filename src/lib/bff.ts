@@ -295,6 +295,25 @@ export async function handleProxy(request: Request, deps: BffDeps): Promise<Resp
 
   if (upstream.status >= 300 && upstream.status < 400) return upstreamUnavailable();
   if (upstream.status === 401) clearSessionCookies(clear, deps);
+
+  // Ninguna respuesta JSON de la API entrega access_token al navegador. Si PUT auth/profile rota el JWT
+  // (cambio de contraseña), el BFF lo guarda en la cookie (y rota el CSRF; el cliente lo relee en cada petición).
+  if (upstream.ok && (upstream.headers.get('content-type') || '').toLowerCase().startsWith('application/json')) {
+    const text = await upstream.text();
+    try {
+      const data = JSON.parse(text);
+      if (data && typeof data === 'object' && !Array.isArray(data) && 'access_token' in data) {
+        const { access_token: rotated, ...safe } = data as Record<string, unknown>;
+        if (request.method === 'PUT' && route.path === 'auth/profile' && typeof rotated === 'string' && rotated) {
+          setSessionCookies(clear, rotated, deps);
+        }
+        return json(upstream.status, safe, clear);
+      }
+    } catch {
+      // no es JSON válido: se retransmite tal cual
+    }
+    return relay(new Response(text, { status: upstream.status, headers: upstream.headers }), clear);
+  }
   return relay(upstream, clear);
 }
 
