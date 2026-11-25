@@ -108,3 +108,11 @@ html.light ::-webkit-scrollbar-thumb {
 html.light ::-webkit-scrollbar-thumb:hover {
   background: #cfd8d8;
 }
+
+/* reCAPTCHA v3: el badge solo se ve en la pantalla de login/registro (AuthScreen) */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+body.auth-screen-active .grecaptcha-badge {
+  visibility: visible;
+}
