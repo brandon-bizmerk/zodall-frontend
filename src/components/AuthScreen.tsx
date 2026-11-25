@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Script from 'next/script';
 import { Shield, Lock, Mail, Building, User, Globe, ArrowRight, Loader2, Sun, Moon } from 'lucide-react';
 import { loginApi, registerApi, ApiError } from '@/lib/api';
 import { AuthResponse } from '@/types/auth';
 import { useTheme } from '@/context/ThemeContext';
+import { RECAPTCHA_SITE_KEY, getRecaptchaToken } from '@/lib/recaptcha';
 
 interface AuthScreenProps {
   onAuthSuccess: (authData: AuthResponse) => void;
@@ -40,12 +42,14 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           throw new Error('La contraseña debe tener al menos 6 caracteres.');
         }
 
+        const recaptchaToken = await getRecaptchaToken('register');
         const data = await registerApi({
           company_name: companyName,
           full_name: fullName,
           email,
           password,
           country,
+          ...(recaptchaToken ? { recaptcha_token: recaptchaToken } : {}),
         });
         onAuthSuccess(data);
       } else {
@@ -53,14 +57,15 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           throw new Error('Por favor ingresa tu correo y contraseña.');
         }
 
-        const data = await loginApi(email, password);
+        const recaptchaToken = await getRecaptchaToken('login');
+        const data = await loginApi(email, password, recaptchaToken);
         onAuthSuccess(data);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage(err.message || 'Ocurrió un error inesperado al procesar la solicitud.');
+        setErrorMessage((err instanceof Error && err.message) || 'Ocurrió un error inesperado al procesar la solicitud.');
       }
     } finally {
       setLoading(false);
@@ -69,6 +74,13 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-surface)] text-[var(--color-text-main)] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden transition-colors">
+      {RECAPTCHA_SITE_KEY && (
+        <Script
+          id="recaptcha-v3"
+          src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
+          strategy="afterInteractive"
+        />
+      )}
       {/* Botón flotante para cambiar tema */}
       <div className="absolute top-6 right-6 z-20">
         <button

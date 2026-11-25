@@ -9,19 +9,18 @@ import {
   AdminUserItem,
   AdminAuditLogsResponse,
 } from '@/types/auth';
-import { QueryHistoryItem, VerificationResult } from '@/types/compliance';
+import { QueryHistoryItem, VerificationResult, ProofVerificationResult } from '@/types/compliance';
 
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/v1';
 
 export const AUTH_TOKEN_KEY = 'regtech_jwt_token';
-export const DEFAULT_API_KEY = 'rtk_live_supersecretkey12345';
 
 export class ApiError extends Error {
   statusCode: number;
-  data?: any;
+  data?: unknown;
 
-  constructor(message: string, statusCode: number, data?: any) {
+  constructor(message: string, statusCode: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
@@ -71,7 +70,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     }
 
     let errorMsg = `Error HTTP ${response.status}: ${response.statusText}`;
-    let errorData: any;
+    let errorData: { message?: string | string[] } | undefined;
     try {
       errorData = await response.json();
       if (errorData?.message) {
@@ -90,10 +89,10 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
 // â”€â”€â”€ Auth API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function loginApi(email: string, password: string): Promise<AuthResponse> {
+export async function loginApi(email: string, password: string, recaptchaToken?: string): Promise<AuthResponse> {
   const data = await apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...(recaptchaToken ? { recaptcha_token: recaptchaToken } : {}) }),
   });
   if (data.access_token) {
     setAuthToken(data.access_token);
@@ -111,6 +110,7 @@ export async function registerApi(payload: {
   email: string;
   password: string;
   country?: string;
+  recaptcha_token?: string;
 }): Promise<AuthResponse> {
   const data = await apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
@@ -169,12 +169,9 @@ export async function createStripeCheckoutSessionApi(plan_id: string): Promise<{
   });
 }
 
-export async function verifyStripeSessionApi(session_id: string): Promise<{ success: boolean; plan: string; query_limit: number }> {
-  return apiFetch<{ success: boolean; plan: string; query_limit: number }>(`/stripe/verify-session?session_id=${encodeURIComponent(session_id)}`);
-}
 
-export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: any }> {
-  return apiFetch<{ message: string; plan: any }>('/tenants/upgrade-plan', {
+export async function upgradePlanApi(plan_id: string): Promise<{ message: string; plan: unknown }> {
+  return apiFetch<{ message: string; plan: unknown }>('/tenants/upgrade-plan', {
     method: 'POST',
     body: JSON.stringify({ plan_id }),
   });
@@ -246,7 +243,7 @@ export async function verifyManualCompliance(payload: {
 export async function verifyCompliance(
   payload: { queried_name: string; queried_document: string; order_reference?: string; strict_mode?: boolean },
   apiKey?: string
-): Promise<any> {
+): Promise<VerificationResult> {
   const cleanKey = (apiKey || '').trim();
   if (!cleanKey) {
     throw new ApiError(
@@ -276,7 +273,7 @@ export async function verifyCompliance(
 /**
  * Consulta de verificaciÃ³n de evidencia SAGRILAFT pÃºblica (Punto 9)
  */
-export async function verifyProofApi(hash: string): Promise<any> {
+export async function verifyProofApi(hash: string): Promise<ProofVerificationResult> {
   const cleanHash = (hash || '').trim();
   const endpoint = `${BACKEND_URL}/compliance/verify-proof/${cleanHash}`;
   const res = await fetch(endpoint, {
@@ -304,8 +301,8 @@ export async function getAdminUsersApi(): Promise<AdminUserItem[]> {
 /**
  * SuperAdmin: Activar o desactivar cuenta de usuario cliente
  */
-export async function toggleAdminUserStatusApi(userId: string): Promise<any> {
-  return apiFetch<any>(`/tenants/admin/users/${userId}/toggle-status`, {
+export async function toggleAdminUserStatusApi(userId: string): Promise<{ account_status: string }> {
+  return apiFetch<{ account_status: string }>(`/tenants/admin/users/${userId}/toggle-status`, {
     method: 'PUT',
   });
 }
@@ -337,8 +334,8 @@ export async function updateProfileApi(data: {
   email?: string;
   current_password?: string;
   new_password?: string;
-}): Promise<any> {
-  return apiFetch<any>('/auth/profile', {
+}): Promise<{ user: UserProfile }> {
+  return apiFetch<{ user: UserProfile }>('/auth/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -392,6 +389,7 @@ export interface EventLogItem {
   status: 'SUCCESS' | 'ERROR' | 'WARN';
   ip_address: string | null;
   error_message: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: Record<string, any> | null;
   created_at: string;
 }

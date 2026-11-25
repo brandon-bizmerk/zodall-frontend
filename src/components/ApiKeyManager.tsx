@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Copy, Check, ShieldCheck, Loader2, RotateCw, Terminal, Info } from 'lucide-react';
+import { Key, Copy, Check, ShieldCheck, Loader2, RotateCw, Terminal, Info, Download, Puzzle } from 'lucide-react';
 import { getApiKeyStatusApi, generateApiKeyApi, BACKEND_URL } from '@/lib/api';
 import { useTheme } from '@/context/ThemeContext';
+
+const WP_PLUGIN_URL = process.env.NEXT_PUBLIC_WP_PLUGIN_URL || '';
 
 export interface ApiKeyManagerProps {
   onApiKeyGenerated?: (prefix: string) => void;
@@ -33,14 +35,15 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
       setHasApiKey(data.has_api_key);
       setPrefix(data.api_key_prefix);
       if (data.last_generated) setLastGenerated(data.last_generated);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al obtener el estado de la API Key');
+    } catch (err: unknown) {
+      setErrorMsg((err instanceof Error ? err.message : undefined) || 'Error al obtener el estado de la API Key');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
   }, []);
 
@@ -54,8 +57,8 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
       setHasApiKey(true);
       setShowRotateConfirm(false);
       onApiKeyGenerated?.(res.api_key_prefix);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al generar la API Key');
+    } catch (err: unknown) {
+      setErrorMsg((err instanceof Error ? err.message : undefined) || 'Error al generar la API Key');
     } finally {
       setActionLoading(false);
     }
@@ -276,13 +279,38 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
         </p>
 
         <pre className="m-0 border border-[var(--color-border)] bg-[var(--color-bg-card-subtle)] rounded-xl p-4 font-mono text-xs leading-relaxed text-[var(--color-text-main)] overflow-x-auto">
-          <span className="text-[var(--color-text-faint)]">// Ejemplo cURL hacia el endpoint oficial de producción:</span>
+          <span className="text-[var(--color-text-faint)]">{'// Ejemplo cURL hacia el endpoint oficial de producción:'}</span>
           {'\n'}curl -X POST https://api.zodall.app/api/v1/compliance/verify \{'\n'}
-          {'  '}<span className="text-[#5BE1E6]">-H "Content-Type: application/json"</span> \{'\n'}
-          {'  '}<span className="text-[#10d98a]">-H "x-api-key: {prefix || 'rtk_live_...'}"</span> \{'\n'}
+          {'  '}<span className="text-[#5BE1E6]">-H &quot;Content-Type: application/json&quot;</span> \{'\n'}
+          {'  '}<span className="text-[#10d98a]">-H &quot;x-api-key: {prefix || 'rtk_live_...'}&quot;</span> \{'\n'}
           {'  '}<span className="text-[#f5b50a]">-d &apos;{"{"}&quot;queried_name&quot;:&quot;Nicolas Maduro&quot;,&quot;queried_document&quot;:&quot;123456789&quot;{"}"}&apos;</span>
         </pre>
       </section>
+
+      {/* PLUGIN DE WORDPRESS (solo si NEXT_PUBLIC_WP_PLUGIN_URL está definida) */}
+      {WP_PLUGIN_URL && (
+        <section className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-2xl p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5 text-sm font-bold text-[var(--color-text-main)]">
+              <Puzzle className={`w-4 h-4 ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`} />
+              <span>Plugin de WordPress</span>
+            </div>
+            <a
+              href={WP_PLUGIN_URL}
+              download
+              className="w-full sm:w-auto text-xs font-bold text-[#181919] bg-[#5BE1E6] hover:bg-[#19BFB7] rounded-lg px-4 py-2.5 transition shadow-[0_0_16px_rgba(91,225,230,0.3)] flex items-center justify-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Descargar plugin</span>
+            </a>
+          </div>
+          <ol className="mt-4 space-y-2 text-xs text-[var(--color-text-muted)] list-decimal list-inside">
+            <li>En WordPress: <b className="text-[var(--color-text-main)]">Plugins → Añadir nuevo → Subir plugin</b>.</li>
+            <li>Activa el plugin.</li>
+            <li>Pega tu API Key en <b className="text-[var(--color-text-main)]">Ajustes de Zodall</b>.</li>
+          </ol>
+        </section>
+      )}
     </div>
   );
 }

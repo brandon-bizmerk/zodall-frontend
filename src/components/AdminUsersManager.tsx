@@ -28,10 +28,10 @@ export function AdminUsersManager() {
     try {
       const data = await getAdminUsersApi();
       setUsers(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setNotification({
         type: 'error',
-        message: err.message || 'Error cargando listado de usuarios clientes.',
+        message: (err instanceof Error ? err.message : undefined) || 'Error cargando listado de usuarios clientes.',
       });
     } finally {
       setLoading(false);
@@ -39,6 +39,7 @@ export function AdminUsersManager() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUsers();
   }, []);
 
@@ -76,10 +77,10 @@ export function AdminUsersManager() {
         type: 'success',
         message: `Cuenta de ${user.email} ${newStatus === 'ACTIVE' ? 'activada' : 'desactivada'} exitosamente.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setNotification({
         type: 'error',
-        message: err.message || 'Error al cambiar el estado del usuario.',
+        message: (err instanceof Error ? err.message : undefined) || 'Error al cambiar el estado del usuario.',
       });
     } finally {
       setUpdatingId(null);

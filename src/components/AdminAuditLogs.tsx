@@ -28,6 +28,7 @@ import {
   downloadIndividualCertificatePdf,
   getAdminEventLogsApi,
   EventLogItem,
+  BACKEND_URL,
 } from '@/lib/api';
 import { AdminAuditLogItem } from '@/types/auth';
 
@@ -118,10 +119,12 @@ export function AdminAuditLogs() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeTab === 'compliance') fetchLogs();
   }, [page, pageSize, matchOnly, activeTab]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeTab === 'events') fetchEvents();
   }, [eventsPage, eventsPageSize, eventsTypeFilter, activeTab]);
 
@@ -144,8 +147,8 @@ export function AdminAuditLogs() {
         search: search.trim() || undefined,
         match_only: matchOnly,
       });
-    } catch (err: any) {
-      alert(err.message || 'Error al exportar reporte PDF.');
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : undefined) || 'Error al exportar reporte PDF.');
     } finally {
       setExportingReport(false);
     }
@@ -155,8 +158,8 @@ export function AdminAuditLogs() {
     setDownloadingCertId(log.id);
     try {
       await downloadIndividualCertificatePdf(log.id, log.queried_document);
-    } catch (err: any) {
-      alert(err.message || 'Error al descargar el certificado individual.');
+    } catch (err: unknown) {
+      alert((err instanceof Error ? err.message : undefined) || 'Error al descargar el certificado individual.');
     } finally {
       setDownloadingCertId(null);
     }
@@ -377,7 +380,7 @@ export function AdminAuditLogs() {
                                 {log.integrity_proof_hash}
                               </span>
                               <a
-                                href={`http://localhost:3001/api/v1/compliance/verify-proof/${log.integrity_proof_hash}`}
+                                href={`${BACKEND_URL}/compliance/verify-proof/${log.integrity_proof_hash}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-indigo-400 hover:text-indigo-300"

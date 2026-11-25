@@ -42,7 +42,7 @@ export function AdminPlansDashboard() {
       if (data.length > 0 && !editingPlan) {
         setEditingPlan(JSON.parse(JSON.stringify(data[0])));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFeedback({
         type: 'error',
         text: err instanceof ApiError ? err.message : 'Error al cargar catálogo de planes.',
@@ -53,6 +53,7 @@ export function AdminPlansDashboard() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPlans();
   }, []);
 
@@ -109,7 +110,7 @@ export function AdminPlansDashboard() {
       if (reloaded) {
         setEditingPlan(JSON.parse(JSON.stringify(reloaded)));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFeedback({
         type: 'error',
         text: err instanceof ApiError ? err.message : 'Error al guardar cambios del plan.',
