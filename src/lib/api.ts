@@ -89,10 +89,10 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
 // â”€â”€â”€ Auth API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function loginApi(email: string, password: string): Promise<AuthResponse> {
+export async function loginApi(email: string, password: string, recaptchaToken?: string): Promise<AuthResponse> {
   const data = await apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...(recaptchaToken ? { recaptcha_token: recaptchaToken } : {}) }),
   });
   if (data.access_token) {
     setAuthToken(data.access_token);
@@ -110,6 +110,7 @@ export async function registerApi(payload: {
   email: string;
   password: string;
   country?: string;
+  recaptcha_token?: string;
 }): Promise<AuthResponse> {
   const data = await apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
