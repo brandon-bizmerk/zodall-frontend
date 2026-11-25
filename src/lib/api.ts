@@ -132,6 +132,11 @@ export async function getApiKeyStatusApi(): Promise<ApiKeyStatusResponse> {
   return apiFetch<ApiKeyStatusResponse>('/tenants/api-key');
 }
 
+/** Enlace de descarga del plugin de WordPress (firmado por la API para registrar el tenant). */
+export async function getPluginDownloadApi(): Promise<{ url: string; firmado: boolean }> {
+  return apiFetch<{ url: string; firmado: boolean }>('/tenants/plugin-download');
+}
+
 export async function generateApiKeyApi(): Promise<GenerateApiKeyResponse> {
   return apiFetch<GenerateApiKeyResponse>('/tenants/api-key/generate', {
     method: 'POST',
