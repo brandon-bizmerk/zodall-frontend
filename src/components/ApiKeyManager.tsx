@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Copy, Check, ShieldCheck, Loader2, RotateCw, Terminal, Info, Download, Puzzle } from 'lucide-react';
 import { getApiKeyStatusApi, generateApiKeyApi, getPluginDownloadApi, BACKEND_URL } from '@/lib/api';
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useTheme } from '@/context/ThemeContext';
 
 const WP_PLUGIN_URL = process.env.NEXT_PUBLIC_WP_PLUGIN_URL || '';
@@ -52,7 +53,8 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
     e.preventDefault();
     let url = WP_PLUGIN_URL;
     try {
-      url = (await getPluginDownloadApi()).url || WP_PLUGIN_URL;
+      // Solo se sigue el enlace firmado si es https y del mismo host que el enlace fijo del plugin.
+      url = safeExternalUrl((await getPluginDownloadApi()).url, [new URL(WP_PLUGIN_URL).hostname]) || WP_PLUGIN_URL;
     } catch {
       // Sin enlace firmado la descarga funciona igual, solo no queda registrada.
     }

@@ -490,7 +490,7 @@ export function ComplianceVerification({
                       )}
                     </button>
                     <a
-                      href={`${BACKEND_URL}/compliance/verify-proof/${result.integrity_proof_hash}`}
+                      href={`${BACKEND_URL}/compliance/verify-proof/${encodeURIComponent(result.integrity_proof_hash)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition font-semibold"
