@@ -19,7 +19,6 @@ export type TabType = 'metrics' | 'manual-verification' | 'history' | 'apikey' |
 interface HeaderProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
-  companyName: string;
   userName: string;
   planName: string;
   isSuperAdmin?: boolean;
@@ -30,7 +29,6 @@ interface HeaderProps {
 export function Header({
   activeTab,
   onTabChange,
-  companyName,
   userName,
   planName,
   isSuperAdmin = false,
@@ -76,9 +74,6 @@ export function Header({
             >
               {planName || 'FREE'}
             </span>
-          </div>
-          <div className="hidden 2xl:block border-l border-[var(--color-border)] pl-3 text-[11px] text-[var(--color-text-faint)] truncate max-w-[180px]">
-            {companyName}
           </div>
         </div>
 
