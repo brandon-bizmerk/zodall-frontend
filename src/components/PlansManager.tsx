@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Zap, Shield, Crown, Building2, Check, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getPlansApi, upgradePlanApi, createStripeCheckoutSessionApi, ApiError } from '@/lib/api';
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { SubscriptionPlan } from '@/types/auth';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -106,9 +107,10 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
       if (Number(plan.price_monthly) > 0) {
         setFeedbackMsg({ text: 'Iniciando pasarela de pago segura con Stripe...', type: 'success' });
         const { url } = await createStripeCheckoutSessionApi(plan.id);
-        if (!url) throw new Error('El servidor no devolvió la URL de pago.');
+        const checkoutUrl = safeExternalUrl(url, ['checkout.stripe.com']);
+        if (!checkoutUrl) throw new Error('El servidor no devolvió una URL de pago válida.');
         // eslint-disable-next-line react-hooks/immutability
-        window.location.href = url;
+        window.location.href = checkoutUrl;
         return;
       }
 
