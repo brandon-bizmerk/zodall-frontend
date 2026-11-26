@@ -27,6 +27,7 @@ import {
   downloadClientHistoryPdf,
   downloadIndividualCertificatePdf,
 } from '@/lib/api';
+import { buildHistoryCsv, downloadCsv } from '@/lib/csv';
 import { useTheme } from '@/context/ThemeContext';
 
 // Datos mock iniciales para fallback visual
@@ -193,6 +194,13 @@ export function QueryHistory() {
       });
   }, [logs, searchTerm, statusFilter, sortOrder]);
 
+  const handleExportCsv = () => {
+    downloadCsv(
+      buildHistoryCsv(filteredData),
+      `historial_consultas_zodall_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+  };
+
   // Resetear a página 1 si cambian los filtros
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -248,12 +256,14 @@ export function QueryHistory() {
           </button>
 
           <button
-            onClick={() => alert('Exportación CSV: los registros han sido copiados.')}
+            onClick={handleExportCsv}
+            disabled={isLoading || filteredData.length === 0}
+            title="Descargar el listado actual de consultas en formato CSV"
             className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
               isDark
                 ? 'bg-[#1d1f1f] border-[#2b2d2d] text-[#b9c4c4] hover:text-white'
                 : 'bg-white border-[#dfe6e6] text-[#4a5555] hover:text-[#181919]'
-            }`}
+            } disabled:opacity-50`}
           >
             <Download className="w-4 h-4 text-[#5BE1E6]" />
             <span>Exportar CSV</span>
