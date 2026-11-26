@@ -27,7 +27,7 @@ import {
   downloadClientHistoryPdf,
   downloadIndividualCertificatePdf,
 } from '@/lib/api';
-import { buildHistoryCsv, downloadCsv } from '@/lib/csv';
+import { buildHistoryCsv, downloadCsv, fetchAllHistory, EXPORT_MAX_ROWS } from '@/lib/csv';
 import { useTheme } from '@/context/ThemeContext';
 
 // Datos mock iniciales para fallback visual
@@ -94,6 +94,8 @@ export function QueryHistory() {
   const [pageSize, setPageSize] = useState<number>(15);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [csvNotice, setCsvNotice] = useState<{ type: 'warn' | 'error'; text: string } | null>(null);
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
   const { theme } = useTheme();
@@ -194,11 +196,39 @@ export function QueryHistory() {
       });
   }, [logs, searchTerm, statusFilter, sortOrder]);
 
-  const handleExportCsv = () => {
-    downloadCsv(
-      buildHistoryCsv(filteredData),
-      `historial_consultas_zodall_${new Date().toISOString().slice(0, 10)}.csv`,
-    );
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    setCsvNotice(null);
+    try {
+      const { rows, truncated } = await fetchAllHistory((offset, limit) =>
+        getQueryHistoryApi({
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          search: searchTerm.trim() || undefined,
+          order: sortOrder,
+          limit,
+          offset,
+        }),
+      );
+      downloadCsv(
+        buildHistoryCsv(rows),
+        `historial_consultas_zodall_${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+      if (truncated) {
+        setCsvNotice({
+          type: 'warn',
+          text: `El CSV incluye solo las primeras ${EXPORT_MAX_ROWS.toLocaleString('es-CO')} consultas. Acota el rango de fechas para exportar el resto.`,
+        });
+      }
+    } catch (err: unknown) {
+      setCsvNotice({
+        type: 'error',
+        text: (err instanceof Error ? err.message : undefined) || 'Error al exportar el CSV del historial.',
+      });
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   // Resetear a página 1 si cambian los filtros
@@ -257,7 +287,7 @@ export function QueryHistory() {
 
           <button
             onClick={handleExportCsv}
-            disabled={isLoading || filteredData.length === 0}
+            disabled={exportingCsv || isLoading || filteredData.length === 0}
             title="Descargar el listado actual de consultas en formato CSV"
             className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
               isDark
@@ -265,11 +295,28 @@ export function QueryHistory() {
                 : 'bg-white border-[#dfe6e6] text-[#4a5555] hover:text-[#181919]'
             } disabled:opacity-50`}
           >
-            <Download className="w-4 h-4 text-[#5BE1E6]" />
-            <span>Exportar CSV</span>
+            {exportingCsv ? (
+              <Loader2 className="w-4 h-4 animate-spin text-[#5BE1E6]" />
+            ) : (
+              <Download className="w-4 h-4 text-[#5BE1E6]" />
+            )}
+            <span>{exportingCsv ? 'Generando CSV...' : 'Exportar CSV'}</span>
           </button>
         </div>
       </div>
+
+      {csvNotice && (
+        <div
+          role="status"
+          className={`text-xs px-3.5 py-2 rounded-xl border ${
+            csvNotice.type === 'error'
+              ? 'border-rose-500/40 text-rose-500'
+              : 'border-amber-500/40 text-amber-500'
+          }`}
+        >
+          {csvNotice.text}
+        </div>
+      )}
 
       {/* Tarjetas resumen de métricas */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

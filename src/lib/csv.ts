@@ -16,8 +16,48 @@ export function buildCsv(headers: string[], rows: unknown[][]): string {
   return BOM + lines.join('\r\n') + '\r\n';
 }
 
+/** Zona horaria del navegador como `UTC-05:00`. */
+export function localTzLabel(date: Date = new Date()): string {
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const abs = Math.abs(offset);
+  return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+}
+
+/** ISO -> `AAAA-MM-DD HH:mm:ss` en la zona del navegador (Excel lo reconoce y ordena). */
+export function formatLocalDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+export const EXPORT_PAGE_SIZE = 500;
+export const EXPORT_MAX_ROWS = 10000;
+
+type HistoryPage = { total?: number; data: QueryHistoryItem[] };
+
+/** Recorre el historial por páginas (offset/limit) hasta agotarlo o llegar al tope. */
+export async function fetchAllHistory(
+  fetchPage: (offset: number, limit: number) => Promise<HistoryPage>,
+  maxRows: number = EXPORT_MAX_ROWS,
+  pageSize: number = EXPORT_PAGE_SIZE,
+): Promise<{ rows: QueryHistoryItem[]; truncated: boolean }> {
+  const rows: QueryHistoryItem[] = [];
+  while (rows.length < maxRows) {
+    const page = await fetchPage(rows.length, Math.min(pageSize, maxRows - rows.length));
+    const data = Array.isArray(page?.data) ? page.data : [];
+    rows.push(...data);
+    if (data.length === 0 || (typeof page.total === 'number' && rows.length >= page.total)) {
+      return { rows, truncated: false };
+    }
+  }
+  const last = await fetchPage(rows.length, 1);
+  return { rows, truncated: Array.isArray(last?.data) && last.data.length > 0 };
+}
+
 const HISTORY_HEADERS = [
-  'Fecha y hora',
+  'Fecha y hora (TZ)',
   'Nombre consultado',
   'Documento/NIT',
   'Referencia',
@@ -30,9 +70,9 @@ const HISTORY_HEADERS = [
 
 export function buildHistoryCsv(items: QueryHistoryItem[]): string {
   return buildCsv(
-    HISTORY_HEADERS,
+    HISTORY_HEADERS.map((h) => h.replace('TZ', localTzLabel())),
     items.map((i) => [
-      i.timestamp,
+      formatLocalDateTime(i.timestamp),
       i.queried_name,
       i.queried_document,
       i.order_reference ?? '',
