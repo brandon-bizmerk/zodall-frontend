@@ -34,7 +34,7 @@ export interface TenantInfo {
 
 export interface AuthResponse {
   message: string;
-  access_token: string;
+  // El JWT no llega al navegador: el BFF lo guarda en una cookie HttpOnly.
   user: UserProfile;
   tenant: {
     id: string;

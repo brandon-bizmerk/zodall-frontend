@@ -380,7 +380,7 @@ export function AdminAuditLogs() {
                                 {log.integrity_proof_hash}
                               </span>
                               <a
-                                href={`${BACKEND_URL}/compliance/verify-proof/${log.integrity_proof_hash}`}
+                                href={`${BACKEND_URL}/compliance/verify-proof/${encodeURIComponent(log.integrity_proof_hash)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-indigo-400 hover:text-indigo-300"

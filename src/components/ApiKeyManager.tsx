@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Key, Copy, Check, ShieldCheck, Loader2, RotateCw, Terminal, Info, Download, Puzzle } from 'lucide-react';
-import { getApiKeyStatusApi, generateApiKeyApi, BACKEND_URL } from '@/lib/api';
+import { getApiKeyStatusApi, generateApiKeyApi, getPluginDownloadApi, BACKEND_URL } from '@/lib/api';
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useTheme } from '@/context/ThemeContext';
 
 const WP_PLUGIN_URL = process.env.NEXT_PUBLIC_WP_PLUGIN_URL || '';
@@ -46,6 +47,19 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
   }, []);
+
+  // Pide a la API el enlace firmado (registra el tenant en zodall.com); si falla, usa el enlace fijo.
+  const handlePluginDownload = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    let url = WP_PLUGIN_URL;
+    try {
+      // Solo se sigue el enlace firmado si es https y del mismo host que el enlace fijo del plugin.
+      url = safeExternalUrl((await getPluginDownloadApi()).url, [new URL(WP_PLUGIN_URL).hostname]) || WP_PLUGIN_URL;
+    } catch {
+      // Sin enlace firmado la descarga funciona igual, solo no queda registrada.
+    }
+    window.location.assign(url);
+  };
 
   const handleGenerate = async () => {
     setActionLoading(true);
@@ -298,6 +312,7 @@ export function ApiKeyManager({ onApiKeyGenerated }: ApiKeyManagerProps = {}) {
             <a
               href={WP_PLUGIN_URL}
               download
+              onClick={handlePluginDownload}
               className="w-full sm:w-auto text-xs font-bold text-[#181919] bg-[#5BE1E6] hover:bg-[#19BFB7] rounded-lg px-4 py-2.5 transition shadow-[0_0_16px_rgba(91,225,230,0.3)] flex items-center justify-center gap-1.5"
             >
               <Download className="w-3.5 h-3.5" />
