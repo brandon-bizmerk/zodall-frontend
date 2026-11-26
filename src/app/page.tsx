@@ -150,7 +150,6 @@ export default function Home() {
       <Header
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        companyName={tenant.company_name}
         userName={user.full_name}
         planName={tenant.plan_name || 'Free'}
         isSuperAdmin={false}
