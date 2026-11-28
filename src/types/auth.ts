@@ -29,6 +29,7 @@ export interface TenantInfo {
   remaining_queries: number;
   has_api_key: boolean;
   api_key_prefix?: string | null;
+  trial_ends_at?: string | null;
   created_at: string;
 }
 
@@ -72,6 +73,7 @@ export interface TenantMetricsData {
   usage_percentage: number;
   has_api_key: boolean;
   api_key_prefix?: string | null;
+  trial_ends_at?: string | null;
 }
 
 export interface AdminUserItem {

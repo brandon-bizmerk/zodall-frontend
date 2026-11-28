@@ -25,6 +25,7 @@ interface TenantMetricsProps {
 
 export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshMetrics }: TenantMetricsProps) {
   const [tenant, setTenant] = useState<TenantInfo>(initialTenant);
+  const [now] = useState(() => Date.now());
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -42,8 +43,26 @@ export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshM
   const remaining = Math.max(0, limit - count);
   const usagePercentage = limit > 0 ? Math.min(100, Math.round((count / limit) * 100)) : 0;
 
+  const trialEnd = tenant.plan_id === 'free' && tenant.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
+  const trialValid = trialEnd !== null && !Number.isNaN(trialEnd.getTime());
+
   return (
     <div className="space-y-8 max-w-[1152px] mx-auto py-2">
+      {trialValid && trialEnd && (
+        <div className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-xl px-5 py-3 text-xs text-[var(--color-text-main)] flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {trialEnd.getTime() > now
+              ? `Tu prueba gratuita termina el ${trialEnd.toLocaleDateString()}`
+              : 'Tu prueba gratuita terminó'}
+          </span>
+          <button
+            onClick={() => onNavigateTab('plans')}
+            className={`font-bold hover:underline ${isDark ? 'text-[#5BE1E6]' : 'text-[#0b8a86]'}`}
+          >
+            Ver planes →
+          </button>
+        </div>
+      )}
       {/* 1. Header Card Principal */}
       <section className="border border-[var(--color-border)] bg-[var(--color-bg-card)] rounded-[20px] p-5 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
         <div className="flex items-start sm:items-center gap-4 sm:gap-5 w-full md:w-auto">
@@ -248,7 +267,7 @@ export function TenantMetrics({ tenant: initialTenant, onNavigateTab, onRefreshM
               <b className="text-base text-[var(--color-text-main)]">Planes y Facturación</b>
             </div>
             <p className="text-[12.5px] leading-relaxed text-[var(--color-text-muted)] mt-4 mb-4">
-              Consulta los límites de los planes Free, Personal, Pro y Enterprise. Aumenta tu volumen de consultas en cualquier momento.
+              Consulta los límites de los planes Prueba gratuita, Scale, Pro y Enterprise. Aumenta tu volumen de consultas en cualquier momento.
             </p>
           </div>
           <div>
