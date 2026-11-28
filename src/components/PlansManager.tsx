@@ -7,6 +7,13 @@ import { safeExternalUrl } from '@/lib/safeUrl';
 import { SubscriptionPlan } from '@/types/auth';
 import { useTheme } from '@/context/ThemeContext';
 
+const CONTACT_SALES_URL = 'https://zodall.com/contacto';
+
+// Plan sin precio comprable en Stripe: se atiende con ventas (p. ej. enterprise).
+const isCustomPlan = (plan: SubscriptionPlan) =>
+  plan.id.toLowerCase() !== 'free' &&
+  (plan.id.toLowerCase() === 'enterprise' || (!plan.stripe_price_id && Number(plan.price_monthly) === 0));
+
 interface PlansManagerProps {
   currentPlanId: string;
   onPlanUpdated: () => void;
@@ -37,22 +44,11 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
       icon: <Zap className="w-4 h-4 text-[#5BE1E6]" />,
       desc: 'Ideal para pruebas, prototipado y validación de integración.',
       features: [
-        '250 consultas / mes',
+        '50 consultas durante 14 días',
         'SLA de 400ms Fail-Open',
         'Filtro OFAC, ONU y Colombia',
         'Auditoría criptográfica SHA-256',
         'Soporte comunitario',
-      ],
-    },
-    personal: {
-      icon: <Shield className="w-4 h-4 text-[#10d98a]" />,
-      desc: 'Para pequeños comercios y negocios en fase inicial de operaciones.',
-      features: [
-        '2,500 consultas / mes',
-        'Caché acelerada en Redis (<2ms)',
-        'Soporte por email 24/5',
-        'Exportación de auditorías en CSV',
-        '99.5% SLA Garantizado',
       ],
     },
     pro: {
@@ -143,10 +139,10 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
     plans.length > 0
       ? plans
       : [
-          { id: 'free', name: 'Free', price_monthly: 0, query_limit: 250, description: 'Plan Gratuito', features: [] },
-          { id: 'personal', name: 'Personal', price_monthly: 19, query_limit: 2500, description: 'Plan Personal', features: [] },
-          { id: 'pro', name: 'Pro', price_monthly: 79, query_limit: 20000, description: 'Plan Pro', features: [] },
-          { id: 'enterprise', name: 'Enterprise', price_monthly: 299, query_limit: 100000, description: 'Plan Enterprise', features: [] },
+          { id: 'free', name: 'Prueba gratuita', price_monthly: 0, query_limit: 50, description: 'Prueba gratuita', features: [] },
+          { id: 'scale', name: 'Scale', price_monthly: 299, query_limit: 5000, description: 'Plan Scale', features: [] },
+          { id: 'pro', name: 'Pro', price_monthly: 699, query_limit: 15000, description: 'Plan Pro', features: [] },
+          { id: 'enterprise', name: 'Enterprise', price_monthly: 0, query_limit: 100000, description: 'Plan Enterprise', features: [], stripe_price_id: null },
         ];
 
   return (
@@ -178,6 +174,7 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
         {displayPlans.map((plan) => {
           const isCurrent = plan.id.toLowerCase() === (currentPlanId || 'free').toLowerCase();
+          const isCustom = isCustomPlan(plan);
           const meta = mockPlanMeta[plan.id.toLowerCase()] || {
             icon: 'ϟ',
             desc: plan.description || '',
@@ -243,10 +240,16 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
 
               {/* Precio */}
               <div className="my-4 text-[var(--color-text-main)]">
-                <b className="text-3xl font-heading font-bold">
-                  ${(Number(plan.price_monthly) || 0).toFixed(2)}
-                </b>{' '}
-                <span className="text-xs text-[var(--color-text-muted)]">/ mes</span>
+                {isCustom ? (
+                  <b className="text-3xl font-heading font-bold">A medida</b>
+                ) : (
+                  <>
+                    <b className="text-3xl font-heading font-bold">
+                      ${(Number(plan.price_monthly) || 0).toFixed(2)}
+                    </b>{' '}
+                    <span className="text-xs text-[var(--color-text-muted)]">/ mes</span>
+                  </>
+                )}
               </div>
 
               {/* Lista de Features Dinámicas y Adaptables */}
@@ -275,7 +278,16 @@ export function PlansManager({ currentPlanId, onPlanUpdated }: PlansManagerProps
                   >
                     Activo
                   </button>
-                ) : (
+                ) : isCustom ? (
+                  <a
+                    href={CONTACT_SALES_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full py-2.5 rounded-lg text-xs font-bold text-center text-[#181919] transition shadow-sm bg-[#5BE1E6] hover:bg-[#19BFB7]"
+                  >
+                    Contactar ventas ↗
+                  </a>
+                ) : plan.id.toLowerCase() === 'free' ? null : (
                   <button
                     onClick={() => handleUpgrade(plan)}
                     disabled={actionLoading}
